@@ -14,22 +14,28 @@
 
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-label">Total Barang</div>
-                <div class="stat-value">{{ number_format($stats['total_items']) }}</div>
-            </div>
+            <a href="{{ route('stock-reports.index') }}" class="dash-card-link">
+                <div class="stat-card">
+                    <div class="stat-label">Total Barang</div>
+                    <div class="stat-value">{{ number_format($stats['total_items']) }}</div>
+                </div>
+            </a>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-label">Stok Menipis</div>
-                <div class="stat-value text-warning">{{ number_format($stats['low_stock']) }}</div>
-            </div>
+            <a href="{{ route('stock-reports.index', ['filter' => 'low_stock']) }}" class="dash-card-link">
+                <div class="stat-card">
+                    <div class="stat-label">Stok Menipis</div>
+                    <div class="stat-value text-warning">{{ number_format($stats['low_stock']) }}</div>
+                </div>
+            </a>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-label">Stok Habis</div>
-                <div class="stat-value text-danger">{{ number_format($stats['out_of_stock']) }}</div>
-            </div>
+            <a href="{{ route('stock-reports.index', ['filter' => 'out_of_stock']) }}" class="dash-card-link">
+                <div class="stat-card">
+                    <div class="stat-label">Stok Habis</div>
+                    <div class="stat-value text-danger">{{ number_format($stats['out_of_stock']) }}</div>
+                </div>
+            </a>
         </div>
         <div class="col-sm-6 col-xl-3">
             <div class="stat-card">
@@ -44,6 +50,16 @@
             <h2 class="data-panel-title">Kondisi Stok Barang</h2>
         </div>
         <div class="data-panel-body">
+            @if (! empty($filter))
+                <div class="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-3">
+                    <span>
+                        <i class="bi bi-funnel me-1"></i>
+                        Filter aktif:
+                        <strong>{{ $filter === 'out_of_stock' ? 'Stok habis' : 'Stok menipis' }}</strong>
+                    </span>
+                    <a href="{{ route('stock-reports.index') }}" class="btn btn-sm btn-light">Tampilkan semua</a>
+                </div>
+            @endif
             <div class="table-responsive">
                 <table class="table table-hover align-middle" id="data-table" width="100%">
                     <thead>
@@ -74,7 +90,7 @@
         $('#data-table').DataTable({
             processing: true,
             serverSide: true,
-            ajax: '{{ route('stock-reports.index') }}',
+            ajax: '{{ route('stock-reports.index', array_filter(['filter' => $filter ?? null])) }}',
             order: [[9, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },

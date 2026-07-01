@@ -21,6 +21,13 @@ class StockReportController extends Controller
                 ->with(['category:id,name', 'unit:id,name,abbreviation'])
                 ->latest();
 
+            $filter = request('filter');
+            if ($filter === 'low_stock') {
+                $query->lowStock();
+            } elseif ($filter === 'out_of_stock') {
+                $query->where('is_active', true)->where('stock', 0);
+            }
+
             return DataTables::of($query)
                 ->addIndexColumn()
                 ->addColumn('category_name', fn (Item $i) => $i->category?->name ?? '-')
@@ -56,6 +63,9 @@ class StockReportController extends Controller
             'total_stock_value' => Item::selectRaw('SUM(stock * purchase_price) as total')->value('total') ?? 0,
         ];
 
-        return view('stock-reports.index', compact('stats'));
+        return view('stock-reports.index', [
+            'stats' => $stats,
+            'filter' => request('filter'),
+        ]);
     }
 }

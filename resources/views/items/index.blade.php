@@ -41,6 +41,47 @@
             </div>
         </div>
         <div class="data-panel-body">
+            <div class="items-filter-bar border rounded p-3 mb-3 bg-light-subtle">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold mb-1" for="filter-category">Kategori</label>
+                        <select id="filter-category" class="form-select form-control-clean">
+                            <option value="">Semua Kategori</option>
+                            @foreach ($categories as $cat)
+                                <option value="{{ $cat->id }}" @selected((string) ($filters['category_id'] ?? '') === (string) $cat->id)>{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold mb-1" for="filter-unit">Satuan</label>
+                        <select id="filter-unit" class="form-select form-control-clean">
+                            <option value="">Semua Satuan</option>
+                            @foreach ($units as $unit)
+                                <option value="{{ $unit->id }}" @selected((string) ($filters['unit_id'] ?? '') === (string) $unit->id)>
+                                    {{ $unit->name }}{{ $unit->abbreviation ? ' ('.$unit->abbreviation.')' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold mb-1" for="filter-low-stock">Stok Opname</label>
+                        <select id="filter-low-stock" class="form-select form-control-clean">
+                            <option value="">Semua Stok</option>
+                            <option value="1" @selected($filters['low_stock'] ?? false)>Stok Menipis (stok ≤ batas minimum)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-primary" id="btn-apply-item-filter">
+                            <i class="bi bi-funnel me-1"></i> Terapkan
+                        </button>
+                        <button type="button" class="btn btn-light" id="btn-reset-item-filter">Reset</button>
+                    </div>
+                </div>
+                <div class="form-hint-sm mt-2 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Stok menipis</strong> = stok saat ini sudah mencapai atau di bawah nilai <em>Stock Opname</em> (batas minimum) barang tersebut.
+                </div>
+            </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle" id="data-table" width="100%">
                     <thead>
@@ -52,6 +93,7 @@
                             <th>Kategori</th>
                             <th>Satuan</th>
                             <th>Stok</th>
+                            <th class="text-center">Stock Opname</th>
                             <th>Harga Jual</th>
                             <th>Harga Member</th>
                             <th>Status</th>
@@ -199,11 +241,19 @@
     <script>
         const rupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
 
-        $('#data-table').DataTable({
+        const itemsIndexUrl = @json(route('items.index'));
+        const itemsTable = $('#data-table').DataTable({
             processing: true,
             serverSide: true,
-            ajax: '{{ route('items.index') }}',
-            order: [[10, 'desc']],
+            ajax: {
+                url: itemsIndexUrl,
+                data: function (params) {
+                    params.category_id = $('#filter-category').val();
+                    params.unit_id = $('#filter-unit').val();
+                    params.low_stock = $('#filter-low-stock').val();
+                },
+            },
+            order: [[11, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'photo_thumb', orderable: false, searchable: false },
@@ -212,12 +262,47 @@
                 { data: 'category_name', name: 'category.name', orderable: false },
                 { data: 'unit_name', name: 'unit.name', orderable: false },
                 { data: 'stock_display', name: 'stock', orderable: true, searchable: false },
+                { data: 'stock_opname_display', name: 'stock_opname', orderable: true, searchable: false, className: 'text-center' },
                 { data: 'selling_price', name: 'selling_price', orderable: false, searchable: false },
                 { data: 'member_price', name: 'member_price', orderable: false, searchable: false },
                 { data: 'status', name: 'is_active', orderable: false, searchable: false },
                 { data: 'created_at', name: 'created_at', visible: false, searchable: false },
                 { data: 'action', orderable: false, searchable: false, className: 'text-end' },
             ],
+        });
+
+        function syncItemFilterUrl() {
+            const params = new URLSearchParams();
+            const categoryId = $('#filter-category').val();
+            const unitId = $('#filter-unit').val();
+            const lowStock = $('#filter-low-stock').val();
+
+            if (categoryId) {
+                params.set('category_id', categoryId);
+            }
+            if (unitId) {
+                params.set('unit_id', unitId);
+            }
+            if (lowStock === '1') {
+                params.set('low_stock', '1');
+            }
+
+            const qs = params.toString();
+            const next = qs ? itemsIndexUrl + '?' + qs : itemsIndexUrl;
+            window.history.replaceState(null, '', next);
+        }
+
+        function reloadItemsTable() {
+            itemsTable.ajax.reload();
+            syncItemFilterUrl();
+        }
+
+        $('#btn-apply-item-filter').on('click', reloadItemsTable);
+        $('#filter-category, #filter-unit, #filter-low-stock').on('change', reloadItemsTable);
+
+        $('#btn-reset-item-filter').on('click', function () {
+            $('#filter-category, #filter-unit, #filter-low-stock').val('');
+            reloadItemsTable();
         });
 
         AthaModalCrud.init({
@@ -282,7 +367,7 @@
                     $result.html(html).removeClass('d-none');
 
                     if (res.data?.created > 0) {
-                        $('#data-table').DataTable().ajax.reload(null, false);
+                        itemsTable.ajax.reload(null, false);
                     }
 
                     Swal.fire({
