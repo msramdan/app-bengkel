@@ -7,8 +7,11 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "laravel/fortify": "^1.37",
         "laravel/framework": "^13.0",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "spatie/laravel-permission": "^8.1",
+        "yajra/laravel-datatables-oracle": "^13.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -23,7 +26,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/Helpers/brand.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

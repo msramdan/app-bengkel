@@ -1,0 +1,120 @@
+/**
+ * Atha Motor — Login page
+ */
+:root {
+    --atha-red: #8B1538;
+    --atha-red-dark: #5E0E24;
+    --atha-red-bright: #D42B4A;
+    --atha-yellow: #FFD200;
+    --atha-black: #1A1A1A;
+    --atha-bg: #F4F4F4;
+}
+
+body {
+    font-family: 'Inter', 'Rubik', system-ui, sans-serif;
+    background: var(--atha-bg);
+}
+
+.login-form-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        linear-gradient(135deg, rgba(26, 26, 26, 0.92) 0%, rgba(139, 21, 56, 0.8) 50%, rgba(26, 26, 26, 0.92) 100%),
+        repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 20px,
+            rgba(255, 210, 0, 0.03) 20px,
+            rgba(255, 210, 0, 0.03) 40px
+        );
+    padding: 1.5rem;
+}
+
+.login-form-container .form_container {
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    border-top: 4px solid var(--atha-yellow);
+}
+
+.login-form-container .form_header {
+    background: var(--atha-black);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.login-form-container .form_header img {
+    max-width: 200px;
+    max-height: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.login-form-container .app-form {
+    padding: 2rem 2rem 2.5rem;
+}
+
+.login-form-container .form-label {
+    font-weight: 600;
+    color: var(--atha-black);
+    font-size: 0.875rem;
+}
+
+.login-form-container .form-control {
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #dee2e6;
+}
+
+.login-form-container .form-control:focus {
+    border-color: var(--atha-red);
+    box-shadow: 0 0 0 0.2rem rgba(139, 21, 56, 0.18);
+}
+
+.login-form-container .btn-login {
+    background: linear-gradient(135deg, var(--atha-red-bright), var(--atha-red));
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.75rem;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.login-form-container .btn-login:hover {
+    background: linear-gradient(135deg, var(--atha-red), var(--atha-red-dark));
+    color: #fff;
+}
+
+.login-form-container .brand-tagline {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.login-form-container .alert-danger {
+    background: var(--atha-red);
+    border: none;
+    color: #fff;
+}
+
+.login-form-container a.text-primary {
+    color: var(--atha-red) !important;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-form-container a.text-primary:hover {
+    color: var(--atha-red-dark) !important;
+}
+
+.login-form-container .form-check-input:checked {
+    background-color: var(--atha-red);
+    border-color: var(--atha-red);
+}
