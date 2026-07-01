@@ -70,6 +70,11 @@
                 cart.length = 0;
                 renderCart();
                 $('#stock-add-form')[0].reset();
+                if (window.AthaSearchableSelect) {
+                    AthaSearchableSelect.clear('#cart_item_id');
+                } else {
+                    $('#cart_item_id').val(null).trigger('change');
+                }
                 $('#stock-hint').text('');
                 $('#reference_no, #notes').val('');
             }
@@ -123,7 +128,11 @@
 
                 renderCart();
                 $('#cart_quantity').val('');
-                $('#cart_item_id').val('').trigger('change');
+                if (window.AthaSearchableSelect) {
+                    AthaSearchableSelect.clear('#cart_item_id');
+                } else {
+                    $('#cart_item_id').val(null).trigger('change');
+                }
             });
 
             $cartBody.on('click', '.btn-remove-cart', function () {

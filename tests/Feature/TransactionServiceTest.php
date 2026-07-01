@@ -200,4 +200,36 @@ class TransactionServiceTest extends TestCase
         $this->assertSame(0, $this->item->fresh()->stock);
         $this->assertSame(2, StockMovement::where('item_id', $this->item->id)->where('type', 'out')->count());
     }
+
+    #[Test]
+    public function walk_in_transaction_uses_umum_label_without_customer_record(): void
+    {
+        $tx = app(TransactionService::class)->create([
+            'customer_mode' => 'umum',
+            'payment_method' => 'cash',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ], $this->user->id);
+
+        $this->assertNull($tx->customer_id);
+        $this->assertSame('Umum', $tx->customer_name);
+        $this->assertSame('Umum', $tx->displayCustomerName());
+    }
+
+    #[Test]
+    public function new_customer_payload_creates_master_customer(): void
+    {
+        $before = Customer::count();
+
+        $tx = app(TransactionService::class)->create([
+            'customer_mode' => 'new',
+            'new_customer' => ['name' => 'Pelanggan Cepat', 'phone' => '08123456789'],
+            'payment_method' => 'cash',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ], $this->user->id);
+
+        $this->assertSame($before + 1, Customer::count());
+        $this->assertDatabaseHas('customers', ['name' => 'Pelanggan Cepat', 'phone' => '08123456789']);
+        $this->assertNotNull($tx->customer_id);
+        $this->assertSame('Pelanggan Cepat', $tx->customer_name);
+    }
 }

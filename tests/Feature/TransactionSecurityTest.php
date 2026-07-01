@@ -90,6 +90,7 @@ class TransactionSecurityTest extends TestCase
 
         $this->actingAs($this->teknisi)
             ->postJson(route('transactions.store'), [
+                'customer_mode' => 'existing',
                 'customer_id' => $this->customer->id,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ])
@@ -101,6 +102,7 @@ class TransactionSecurityTest extends TestCase
     {
         $response = $this->actingAs($this->kasir)
             ->postJson(route('transactions.store'), [
+                'customer_mode' => 'existing',
                 'customer_id' => $this->customer->id,
                 'payment_method' => 'cash',
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
@@ -117,6 +119,7 @@ class TransactionSecurityTest extends TestCase
     {
         $this->actingAs($this->kasir)
             ->postJson(route('transactions.store'), [
+                'customer_mode' => 'existing',
                 'customer_id' => $this->customer->id,
             ])
             ->assertStatus(422);
@@ -127,7 +130,9 @@ class TransactionSecurityTest extends TestCase
     {
         $this->actingAs($this->kasir)
             ->postJson(route('transactions.store'), [
+                'customer_mode' => 'existing',
                 'customer_id' => 99999,
+                'payment_method' => 'cash',
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ])
             ->assertStatus(422);
@@ -144,6 +149,7 @@ class TransactionSecurityTest extends TestCase
 
         $this->actingAs($this->kasir)
             ->postJson(route('transactions.store'), [
+                'customer_mode' => 'existing',
                 'customer_id' => $this->customer->id,
                 'payment_method' => 'cash',
                 'technician_id' => $inactive->id,
@@ -177,5 +183,43 @@ class TransactionSecurityTest extends TestCase
         $this->actingAs($this->kasir)
             ->get(route('transactions.create'))
             ->assertOk();
+    }
+
+    #[Test]
+    public function kasir_can_create_walk_in_umum_transaction(): void
+    {
+        $customerCount = Customer::count();
+
+        $this->actingAs($this->kasir)
+            ->postJson(route('transactions.store'), [
+                'customer_mode' => 'umum',
+                'payment_method' => 'cash',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ])
+            ->assertOk();
+
+        $this->assertSame($customerCount, Customer::count());
+        $this->assertDatabaseHas('transactions', [
+            'customer_id' => null,
+            'customer_name' => 'Umum',
+        ]);
+    }
+
+    #[Test]
+    public function kasir_can_create_transaction_with_inline_new_customer(): void
+    {
+        $before = Customer::count();
+
+        $this->actingAs($this->kasir)
+            ->postJson(route('transactions.store'), [
+                'customer_mode' => 'new',
+                'new_customer' => ['name' => 'Pelanggan Baru Inline', 'phone' => '0811111111'],
+                'payment_method' => 'cash',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ])
+            ->assertOk();
+
+        $this->assertSame($before + 1, Customer::count());
+        $this->assertDatabaseHas('customers', ['name' => 'Pelanggan Baru Inline']);
     }
 }

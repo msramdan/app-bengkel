@@ -199,6 +199,6 @@ class DashboardService
             ->where('status', 'completed')
             ->latest()
             ->limit(6)
-            ->get(['id', 'transaction_no', 'type', 'customer_id', 'user_id', 'total', 'created_at']);
+            ->get(['id', 'transaction_no', 'type', 'customer_id', 'customer_name', 'user_id', 'total', 'created_at']);
     }
 }

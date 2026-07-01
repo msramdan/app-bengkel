@@ -26,7 +26,7 @@
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-8">
                                     <label class="form-label small mb-0" for="item_select">Pilih Barang</label>
-                                    <select id="item_select" class="form-select form-control-clean cart-add-control">
+                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select">
                                         <option value="">-- Pilih Barang --</option>
                                         @foreach ($items as $item)
                                             <option value="{{ $item->id }}"

@@ -13,6 +13,9 @@ return [
     /** Default komisi teknisi dari total jasa (%) — bisa diubah per teknisi di master data. */
     'default_technician_commission_percent' => 20,
 
+    /** Label pelanggan lewat tanpa data master (walk-in). */
+    'walk_in_customer_label' => 'Umum',
+
     'payment_methods' => [
         'cash' => 'Cash',
         'qris' => 'QRIS',

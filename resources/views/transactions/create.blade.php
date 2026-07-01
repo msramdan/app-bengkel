@@ -26,7 +26,7 @@
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-7">
                                     <label class="form-label small mb-0" for="item_select">Pilih Barang</label>
-                                    <select id="item_select" class="form-select form-control-clean cart-add-control">
+                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select">
                                         <option value="">-- Pilih Barang --</option>
                                         @foreach ($items as $item)
                                             <option value="{{ $item->id }}"
@@ -132,16 +132,37 @@
                     <div class="data-panel-body">
                         <div class="mb-3">
                             <label class="form-label">Pelanggan <span class="text-danger">*</span></label>
-                            <select name="customer_id" id="customer_id" class="form-select form-control-clean" required>
+                            <select id="customer_id" class="form-control-clean atha-searchable-select">
                                 <option value="">-- Pilih Pelanggan --</option>
-                                @foreach ($customers as $customer)
-                                    <option value="{{ $customer->id }}">{{ $customer->code }} — {{ $customer->name }}</option>
-                                @endforeach
+                                <option value="__umum__">{{ config('workshop.walk_in_customer_label', 'Umum') }} (pelanggan lewat)</option>
+                                <optgroup label="Pelanggan terdaftar">
+                                    @foreach ($customers as $customer)
+                                        <option value="{{ $customer->id }}">{{ $customer->code }} — {{ $customer->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                                <option value="__new__">+ Pelanggan baru...</option>
                             </select>
+                            <div class="form-hint-sm">Pilih <strong>Umum</strong> untuk pembeli lewat tanpa simpan ke master data.</div>
+                        </div>
+                        <div id="new-customer-fields" class="border rounded p-3 mb-3 d-none customer-inline-panel">
+                            <div class="small fw-semibold mb-2"><i class="bi bi-person-plus me-1"></i> Data pelanggan baru</div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-0" for="new_customer_name">Nama <span class="text-danger">*</span></label>
+                                <input type="text" id="new_customer_name" class="form-control form-control-clean" placeholder="Nama pelanggan" autocomplete="off">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-0" for="new_customer_phone">Telepon</label>
+                                <input type="text" id="new_customer_phone" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label small mb-0" for="new_customer_address">Alamat</label>
+                                <input type="text" id="new_customer_address" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
+                            </div>
+                            <div class="form-hint-sm mt-2 mb-0">Otomatis tersimpan ke master pelanggan saat transaksi disimpan.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Teknisi <span id="tech-required" class="text-danger d-none">*</span></label>
-                            <select name="technician_id" id="technician_id" class="form-select form-control-clean">
+                            <select name="technician_id" id="technician_id" class="form-control-clean atha-searchable-select">
                                 <option value="">-- Pilih Teknisi --</option>
                                 @foreach ($technicians as $technician)
                                     <option value="{{ $technician->id }}" data-commission-percent="{{ (float) $technician->commission_percent }}">{{ $technician->code }} — {{ $technician->name }} ({{ number_format((float) $technician->commission_percent, 0) }}%)</option>

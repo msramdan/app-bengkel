@@ -308,7 +308,7 @@
                                     @forelse ($recent_transactions as $tx)
                                         <tr>
                                             <td class="fw-medium small">{{ $tx->transaction_no }}</td>
-                                            <td class="small">{{ $tx->customer?->name ?? '-' }}</td>
+                                            <td class="small">{{ $tx->displayCustomerName() }}</td>
                                             <td class="text-end small fw-semibold text-success">{{ $rp($tx->total) }}</td>
                                             <td class="text-muted small">{{ $tx->created_at?->format('d/m H:i') }}</td>
                                         </tr>

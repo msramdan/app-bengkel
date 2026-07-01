@@ -7,9 +7,11 @@
 <script src="{{ asset('js/jquery.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.datatables.net/v/bs5/dt-2.1.8/datatables.min.js"></script>
 <script src="{{ asset('js/admin.js') }}"></script>
 <script src="{{ asset('js/modal-crud.js') }}"></script>
+<script src="{{ asset('js/searchable-select.js') }}"></script>
 <script>
     $.extend(true, $.fn.dataTable.defaults, {
         pageLength: 25,

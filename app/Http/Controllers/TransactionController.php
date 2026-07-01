@@ -41,7 +41,7 @@ class TransactionController extends Controller
                     'combined' => '<span class="badge bg-warning-subtle text-warning">Gabungan</span>',
                     default => e($t->type),
                 })
-                ->addColumn('customer_name', fn (Transaction $t) => e($t->customer?->name ?? '-'))
+                ->addColumn('customer_name', fn (Transaction $t) => e($t->displayCustomerName()))
                 ->addColumn('technician_name', fn (Transaction $t) => e($t->technician?->name ?? '-'))
                 ->addColumn('total_fmt', fn (Transaction $t) => 'Rp '.number_format((float) $t->total, 0, ',', '.'))
                 ->addColumn('payment_label', fn (Transaction $t) => $this->paymentBadge($t))
@@ -81,7 +81,12 @@ class TransactionController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'customer_mode' => ['required', 'in:existing,umum,new'],
+            'customer_id' => ['nullable', 'required_if:customer_mode,existing', 'exists:customers,id'],
+            'new_customer' => ['nullable', 'required_if:customer_mode,new', 'array'],
+            'new_customer.name' => ['required_if:customer_mode,new', 'string', 'max:255'],
+            'new_customer.phone' => ['nullable', 'string', 'max:30'],
+            'new_customer.address' => ['nullable', 'string', 'max:500'],
             'technician_id' => ['nullable', 'exists:technicians,id'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],

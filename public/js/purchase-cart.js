@@ -103,7 +103,11 @@
 
                 renderCart();
                 $('#item_qty').val('');
-                $('#item_select').val('').trigger('change');
+                if (window.AthaSearchableSelect) {
+                    AthaSearchableSelect.clear('#item_select');
+                } else {
+                    $('#item_select').val(null).trigger('change');
+                }
             });
 
             $itemsBody.on('click', '.btn-remove-item', function () {

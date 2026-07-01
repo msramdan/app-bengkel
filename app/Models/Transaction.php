@@ -8,13 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'transaction_no', 'type', 'customer_id', 'technician_id', 'user_id',
+    'transaction_no', 'type', 'customer_id', 'customer_name', 'technician_id', 'user_id',
     'subtotal_items', 'subtotal_services', 'discount', 'total',
     'technician_commission', 'owner_service_share', 'owner_items_share', 'owner_total_share',
     'status', 'notes', 'payment_method', 'bank_account_id',
 ])]
 class Transaction extends Model
 {
+    public function displayCustomerName(): string
+    {
+        return $this->customer?->name ?? $this->customer_name ?? '-';
+    }
     public function bankAccount(): BelongsTo
     {
         return $this->belongsTo(BankAccount::class);

@@ -67,7 +67,7 @@
                         <dl class="detail-list mb-3">
                             <dt>No. Transaksi</dt><dd>${d.transaction_no}</dd>
                             <dt>Jenis</dt><dd>${typeLabel(d.type)}</dd>
-                            <dt>Pelanggan</dt><dd>${d.customer?.name || '-'}</dd>
+                            <dt>Pelanggan</dt><dd>${d.customer_name || d.customer?.name || '-'}</dd>
                             <dt>Teknisi</dt><dd>${d.technician?.name || '-'}</dd>
                             <dt>Kasir</dt><dd>${d.user?.name || '-'}</dd>
                             <dt>Waktu</dt><dd>${new Date(d.created_at).toLocaleString('id-ID')}</dd>

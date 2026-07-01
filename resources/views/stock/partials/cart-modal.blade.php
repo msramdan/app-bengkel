@@ -11,7 +11,7 @@
                     <form id="stock-add-form" class="cart-add-row row g-2">
                         <div class="col-md-7">
                             <label class="form-label small mb-0" for="cart_item_id">Barang</label>
-                            <select id="cart_item_id" class="form-select form-control-clean cart-add-control">
+                            <select id="cart_item_id" class="form-control-clean cart-add-control atha-searchable-select" data-searchable-parent="#form-modal">
                                 <option value="">-- Pilih Barang --</option>
                                 @foreach ($items as $item)
                                     <option value="{{ $item->id }}">

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Technician;
 use App\Models\Transaction;
@@ -23,7 +24,10 @@ class TransactionService
 
     /**
      * @param  array{
-     *   customer_id: int,
+     *   customer_mode?: 'existing'|'umum'|'new',
+     *   customer_id?: int|null,
+     *   customer_name?: string|null,
+     *   new_customer?: array{name: string, phone?: string|null, address?: string|null},
      *   technician_id?: int|null,
      *   discount?: float,
      *   notes?: string|null,
@@ -53,6 +57,8 @@ class TransactionService
             throw new InvalidArgumentException('Teknisi wajib dipilih untuk transaksi yang memiliki jasa servis.');
         }
 
+        $customerData = $this->resolveCustomer($payload);
+
         $technician = null;
         if (! empty($payload['technician_id'])) {
             $technician = Technician::query()->find($payload['technician_id']);
@@ -61,7 +67,7 @@ class TransactionService
             }
         }
 
-        return DB::transaction(function () use ($payload, $userId, $itemLines, $serviceLines, $type, $hasServices, $technician) {
+        return DB::transaction(function () use ($payload, $userId, $itemLines, $serviceLines, $type, $hasServices, $technician, $customerData) {
             $resolvedItems = $this->resolveItemLines($itemLines);
             $resolvedServices = $this->resolveServiceLines($serviceLines);
 
@@ -92,7 +98,8 @@ class TransactionService
             $transaction = Transaction::create([
                 'transaction_no' => $transactionNo,
                 'type' => $type,
-                'customer_id' => $payload['customer_id'],
+                'customer_id' => $customerData['customer_id'],
+                'customer_name' => $customerData['customer_name'],
                 'technician_id' => $hasServices ? $payload['technician_id'] : null,
                 'user_id' => $userId,
                 'subtotal_items' => $subtotalItems,
@@ -201,6 +208,74 @@ class TransactionService
         }
 
         return $resolved;
+    }
+
+    /**
+     * @return array{customer_id: int|null, customer_name: string}
+     */
+    private function resolveCustomer(array $payload): array
+    {
+        $mode = $payload['customer_mode'] ?? null;
+
+        if ($mode === null && ! empty($payload['customer_id'])) {
+            $mode = 'existing';
+        }
+
+        return match ($mode) {
+            'umum' => [
+                'customer_id' => null,
+                'customer_name' => (string) config('workshop.walk_in_customer_label', 'Umum'),
+            ],
+            'new' => $this->createCustomerFromPayload($payload['new_customer'] ?? []),
+            'existing' => $this->resolveExistingCustomer((int) ($payload['customer_id'] ?? 0)),
+            default => throw new InvalidArgumentException('Pilih pelanggan, gunakan Umum, atau isi data pelanggan baru.'),
+        };
+    }
+
+    /**
+     * @param  array{name?: string, phone?: string|null, address?: string|null}  $data
+     * @return array{customer_id: int, customer_name: string}
+     */
+    private function createCustomerFromPayload(array $data): array
+    {
+        $name = trim((string) ($data['name'] ?? ''));
+
+        if ($name === '') {
+            throw new InvalidArgumentException('Nama pelanggan baru wajib diisi.');
+        }
+
+        $customer = Customer::create([
+            'code' => Customer::generateCode(),
+            'name' => $name,
+            'phone' => isset($data['phone']) ? trim((string) $data['phone']) ?: null : null,
+            'address' => isset($data['address']) ? trim((string) $data['address']) ?: null : null,
+        ]);
+
+        return [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+        ];
+    }
+
+    /**
+     * @return array{customer_id: int, customer_name: string}
+     */
+    private function resolveExistingCustomer(int $customerId): array
+    {
+        if ($customerId <= 0) {
+            throw new InvalidArgumentException('Pilih pelanggan terdaftar.');
+        }
+
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            throw new InvalidArgumentException('Pelanggan tidak ditemukan.');
+        }
+
+        return [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+        ];
     }
 
     private function resolveServiceLines(array $lines): \Illuminate\Support\Collection

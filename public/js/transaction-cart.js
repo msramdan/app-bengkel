@@ -21,12 +21,45 @@
             }, options);
 
             function resolveTechPercent() {
-                const $selected = $('#technician_id option:selected');
+                const $selected = $('#technician_id').find('option:selected');
                 const fromTech = parseFloat($selected.data('commission-percent'));
                 if ($selected.val() && !isNaN(fromTech)) {
                     return fromTech;
                 }
                 return settings.defaultTechPercent;
+            }
+
+            function getCustomerMode() {
+                const val = $('#customer_id').val();
+                if (val === '__umum__') {
+                    return 'umum';
+                }
+                if (val === '__new__') {
+                    return 'new';
+                }
+                if (val) {
+                    return 'existing';
+                }
+                return null;
+            }
+
+            function hasCustomerSelected() {
+                const mode = getCustomerMode();
+                if (mode === 'umum' || mode === 'existing') {
+                    return true;
+                }
+                if (mode === 'new') {
+                    return !!$('#new_customer_name').val().trim();
+                }
+                return false;
+            }
+
+            function toggleNewCustomerFields() {
+                if (getCustomerMode() === 'new') {
+                    $('#new-customer-fields').removeClass('d-none');
+                } else {
+                    $('#new-customer-fields').addClass('d-none');
+                }
             }
 
             const itemCart = [];
@@ -130,13 +163,20 @@
                 $('#sum-owner-total').text(formatRp(ownerTotal));
 
                 const hasLines = itemCart.length || serviceCart.length;
-                const hasCustomer = !!$('#customer_id').val();
+                const hasCustomer = hasCustomerSelected();
                 const needsTech = serviceCart.length > 0;
                 const hasTech = !!$('#technician_id').val();
                 const paymentOk = $('#payment_method').val() !== 'transfer' || !!$('#bank_account_id').val();
 
                 $submit.prop('disabled', !(hasLines && hasCustomer && (!needsTech || hasTech) && paymentOk));
             }
+
+            $('#customer_id').on('change', function () {
+                toggleNewCustomerFields();
+                updateSummary();
+            });
+
+            $('#new_customer_name, #new_customer_phone, #new_customer_address').on('input', updateSummary);
 
             $('#customer_id, #technician_id, #discount, #payment_method, #bank_account_id').on('change input', updateSummary);
 
@@ -184,7 +224,11 @@
 
                 renderItemCart();
                 $('#item_qty').val('');
-                $('#item_select').val('').trigger('change');
+                if (window.AthaSearchableSelect) {
+                    AthaSearchableSelect.clear('#item_select');
+                } else {
+                    $('#item_select').val(null).trigger('change');
+                }
             });
 
             $('#btn-add-service').on('click', function () {
@@ -247,6 +291,17 @@
                     return;
                 }
 
+                const customerMode = getCustomerMode();
+                if (!customerMode) {
+                    Swal.fire({ icon: 'warning', title: 'Pilih pelanggan terlebih dahulu.' });
+                    return;
+                }
+
+                if (customerMode === 'new' && !$('#new_customer_name').val().trim()) {
+                    Swal.fire({ icon: 'warning', title: 'Nama pelanggan baru wajib diisi.' });
+                    return;
+                }
+
                 if ($('#payment_method').val() === 'transfer' && !$('#bank_account_id').val()) {
                     Swal.fire({ icon: 'warning', title: 'Pilih akun bank untuk transfer.' });
                     return;
@@ -254,25 +309,37 @@
 
                 $submit.prop('disabled', true);
 
+                const payload = {
+                    _token: $('meta[name="csrf-token"]').attr('content'),
+                    customer_mode: customerMode,
+                    technician_id: $('#technician_id').val() || null,
+                    discount: $('#discount').val() || 0,
+                    notes: $('#notes').val(),
+                    payment_method: $('#payment_method').val(),
+                    bank_account_id: $('#bank_account_id').val() || null,
+                    items: itemCart.map(function (l) {
+                        return { item_id: l.item_id, quantity: l.quantity };
+                    }),
+                    services: serviceCart.map(function (l) {
+                        return { workshop_service_id: l.workshop_service_id, quantity: l.quantity };
+                    }),
+                };
+
+                if (customerMode === 'existing') {
+                    payload.customer_id = $('#customer_id').val();
+                } else if (customerMode === 'new') {
+                    payload.new_customer = {
+                        name: $('#new_customer_name').val().trim(),
+                        phone: $('#new_customer_phone').val().trim() || null,
+                        address: $('#new_customer_address').val().trim() || null,
+                    };
+                }
+
                 $.ajax({
                     url: settings.storeUrl,
                     type: 'POST',
                     headers: { Accept: 'application/json' },
-                    data: {
-                        _token: $('meta[name="csrf-token"]').attr('content'),
-                        customer_id: $('#customer_id').val(),
-                        technician_id: $('#technician_id').val() || null,
-                        discount: $('#discount').val() || 0,
-                        notes: $('#notes').val(),
-                        payment_method: $('#payment_method').val(),
-                        bank_account_id: $('#bank_account_id').val() || null,
-                        items: itemCart.map(function (l) {
-                            return { item_id: l.item_id, quantity: l.quantity };
-                        }),
-                        services: serviceCart.map(function (l) {
-                            return { workshop_service_id: l.workshop_service_id, quantity: l.quantity };
-                        }),
-                    },
+                    data: payload,
                     success: function (res) {
                         Swal.fire({
                             icon: 'success',
@@ -293,6 +360,7 @@
             });
 
             updateSummary();
+            toggleNewCustomerFields();
         },
     };
 })(jQuery);
