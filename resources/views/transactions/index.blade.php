@@ -1,20 +1,20 @@
 @extends('layouts.app')
 
-@section('title', 'Transaksi')
+@section('title', 'Transaksi Penjualan')
 
 @section('content')
     @include('layouts.partials.page-hero', [
         'items' => [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Transaksi'],
+            ['label' => 'Transaksi Penjualan'],
         ],
-        'title' => 'Transaksi',
+        'title' => 'Transaksi Penjualan',
         'subtitle' => 'Penjualan barang, servis jasa, dan transaksi gabungan.',
     ])
 
     <div class="data-panel">
         <div class="data-panel-head data-panel-head-row">
-            <h2 class="data-panel-title">Riwayat Transaksi</h2>
+            <h2 class="data-panel-title">Riwayat Penjualan</h2>
             @can('transaction create')
                 <a href="{{ route('transactions.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus-lg"></i> Transaksi Baru
@@ -53,6 +53,9 @@
                 </div>
                 <div class="modal-body"></div>
                 <div class="modal-footer">
+                    <a href="#" id="btn-print-invoice" class="btn btn-primary d-none" target="_blank">
+                        <i class="bi bi-printer"></i> Cetak Invoice
+                    </a>
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
@@ -91,6 +94,7 @@
             table: '#data-table',
             showModal: '#show-modal',
             showUrl: '{{ route('transactions.show', '__ID__') }}',
+            invoiceUrl: '{{ route('transactions.invoice', '__ID__') }}',
             techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
             ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},
         });

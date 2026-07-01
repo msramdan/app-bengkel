@@ -144,4 +144,21 @@ class PurchaseAndFinancialReportTest extends TestCase
             ->get(route('financial-reports.index'))
             ->assertForbidden();
     }
+
+    #[Test]
+    public function admin_can_export_financial_report_pdf(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('financial-reports.export-pdf', [
+                'from' => now()->toDateString(),
+                'to' => now()->toDateString(),
+            ]));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString(
+            'laporan-keuangan-',
+            (string) $response->headers->get('content-disposition')
+        );
+    }
 }

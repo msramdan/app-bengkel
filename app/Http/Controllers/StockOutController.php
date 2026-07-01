@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\StockService;
+use App\Support\StockReferenceValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -91,6 +92,8 @@ class StockOutController extends Controller
         ]);
 
         try {
+            StockReferenceValidator::assertManualReference($validated['reference_no'] ?? null);
+
             $result = $this->stockService->stockOutBatch(
                 $validated['items'],
                 (int) auth()->id(),

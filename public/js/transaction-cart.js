@@ -78,6 +78,10 @@
                 return settings.services.find(function (s) { return String(s.id) === String(id); });
             }
 
+            function recalcLine(line) {
+                line.subtotal = Math.round(line.unit_price * line.quantity);
+            }
+
             function renderItemCart() {
                 $itemsBody.empty();
                 if (!itemCart.length) {
@@ -92,8 +96,12 @@
                                     <div class="text-muted small">${line.name}</div>
                                 </td>
                                 <td class="text-center">${line.quantity}</td>
-                                <td class="text-end">${formatRp(line.unit_price)}</td>
-                                <td class="text-end fw-medium">${formatRp(line.subtotal)}</td>
+                                <td class="text-end" style="width:130px">
+                                    <input type="number" class="form-control form-control-clean cart-price-input text-end"
+                                        data-type="item" data-index="${index}"
+                                        value="${line.unit_price}" min="0" step="1" title="Harga transaksi (bisa diubah)">
+                                </td>
+                                <td class="text-end fw-medium cart-subtotal">${formatRp(line.subtotal)}</td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-remove-item" data-index="${index}">
                                         <i class="bi bi-trash"></i>
@@ -122,8 +130,12 @@
                                     <div class="text-muted small">${line.name}</div>
                                 </td>
                                 <td class="text-center">${line.quantity}</td>
-                                <td class="text-end">${formatRp(line.unit_price)}</td>
-                                <td class="text-end fw-medium">${formatRp(line.subtotal)}</td>
+                                <td class="text-end" style="width:130px">
+                                    <input type="number" class="form-control form-control-clean cart-price-input text-end"
+                                        data-type="service" data-index="${index}"
+                                        value="${line.unit_price}" min="0" step="1" title="Harga transaksi (bisa diubah)">
+                                </td>
+                                <td class="text-end fw-medium cart-subtotal">${formatRp(line.subtotal)}</td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-remove-service" data-index="${index}">
                                         <i class="bi bi-trash"></i>
@@ -210,7 +222,7 @@
                 const unitPrice = parseFloat(item.selling_price);
                 if (existing) {
                     existing.quantity = newQty;
-                    existing.subtotal = unitPrice * newQty;
+                    recalcLine(existing);
                 } else {
                     itemCart.push({
                         item_id: item.id,
@@ -251,7 +263,7 @@
 
                 if (existing) {
                     existing.quantity = newQty;
-                    existing.subtotal = unitPrice * newQty;
+                    recalcLine(existing);
                 } else {
                     serviceCart.push({
                         workshop_service_id: service.id,
@@ -276,6 +288,34 @@
             $servicesBody.on('click', '.btn-remove-service', function () {
                 serviceCart.splice($(this).data('index'), 1);
                 renderServiceCart();
+            });
+
+            function handlePriceInput($input) {
+                const index = parseInt($input.data('index'), 10);
+                const type = $input.data('type');
+                const cart = type === 'item' ? itemCart : serviceCart;
+                const line = cart[index];
+                if (!line) {
+                    return;
+                }
+
+                let price = parseFloat($input.val());
+                if (isNaN(price) || price < 0) {
+                    price = 0;
+                }
+
+                line.unit_price = price;
+                recalcLine(line);
+                $input.closest('tr').find('.cart-subtotal').text(formatRp(line.subtotal));
+                updateSummary();
+            }
+
+            $itemsBody.on('input change', '.cart-price-input', function () {
+                handlePriceInput($(this));
+            });
+
+            $servicesBody.on('input change', '.cart-price-input', function () {
+                handlePriceInput($(this));
             });
 
             $('#transaction-form').on('submit', function (e) {
@@ -318,10 +358,10 @@
                     payment_method: $('#payment_method').val(),
                     bank_account_id: $('#bank_account_id').val() || null,
                     items: itemCart.map(function (l) {
-                        return { item_id: l.item_id, quantity: l.quantity };
+                        return { item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price };
                     }),
                     services: serviceCart.map(function (l) {
-                        return { workshop_service_id: l.workshop_service_id, quantity: l.quantity };
+                        return { workshop_service_id: l.workshop_service_id, quantity: l.quantity, unit_price: l.unit_price };
                     }),
                 };
 

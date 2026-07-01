@@ -222,4 +222,24 @@ class TransactionSecurityTest extends TestCase
         $this->assertSame($before + 1, Customer::count());
         $this->assertDatabaseHas('customers', ['name' => 'Pelanggan Baru Inline']);
     }
+
+    #[Test]
+    public function kasir_can_view_transaction_invoice(): void
+    {
+        $response = $this->actingAs($this->kasir)
+            ->postJson(route('transactions.store'), [
+                'customer_mode' => 'umum',
+                'payment_method' => 'cash',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ]);
+
+        $transactionId = $response->json('data.id');
+
+        $this->actingAs($this->kasir)
+            ->get(route('transactions.invoice', $transactionId))
+            ->assertOk()
+            ->assertSee('Nota Penjualan')
+            ->assertSee($response->json('data.transaction_no'))
+            ->assertSee('Umum');
+    }
 }

@@ -62,7 +62,7 @@ class PurchaseController extends Controller
             'items.*.item_id' => ['required', 'exists:items,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'payment_method' => ['required', 'in:cash,transfer'],
-            'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
+            'bank_account_id' => ['nullable', 'required_if:payment_method,transfer', 'exists:bank_accounts,id'],
         ]);
 
         try {

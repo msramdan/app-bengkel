@@ -27,6 +27,7 @@
                 table: '#data-table',
                 showModal: '#show-modal',
                 showUrl: '',
+                invoiceUrl: '',
                 techPercent: 80,
                 ownerPercent: 20,
             }, options);
@@ -38,12 +39,20 @@
             $table.on('click', '[data-action="show-tx"]', function () {
                 const id = $(this).data('id');
                 const $body = $showModal.find('.modal-body');
+                const $printBtn = $('#btn-print-invoice');
 
+                $printBtn.addClass('d-none').attr('href', '#');
                 $body.html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>');
                 showModal.show();
 
                 $.get(settings.showUrl.replace('__ID__', id), function (res) {
                     const d = res.data;
+
+                    if (settings.invoiceUrl) {
+                        $printBtn
+                            .attr('href', settings.invoiceUrl.replace('__ID__', id))
+                            .removeClass('d-none');
+                    }
 
                     let itemRows = (d.items || []).map(function (item) {
                         return `<tr>

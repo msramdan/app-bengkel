@@ -2184,6 +2184,14 @@ input[type="password"].form-control-icon::placeholder {
   z-index: 1065;
 }
 
+.cart-price-input {
+  height: 34px;
+  min-width: 110px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  display: inline-block;
+}
+
 .customer-inline-panel {
   background: var(--admin-surface-2);
 }

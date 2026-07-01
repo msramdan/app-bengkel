@@ -22,7 +22,7 @@ class TransactionController extends Controller
 
     public function __construct(private TransactionService $transactionService)
     {
-        $this->middleware('permission:transaction view')->only(['index', 'show']);
+        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice']);
         $this->middleware('permission:transaction create')->only(['create', 'store']);
     }
 
@@ -87,17 +87,19 @@ class TransactionController extends Controller
             'new_customer.name' => ['required_if:customer_mode,new', 'string', 'max:255'],
             'new_customer.phone' => ['nullable', 'string', 'max:30'],
             'new_customer.address' => ['nullable', 'string', 'max:500'],
-            'technician_id' => ['nullable', 'exists:technicians,id'],
+            'technician_id' => ['nullable', 'required_with:services', 'exists:technicians,id'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'items' => ['nullable', 'array'],
             'items.*.item_id' => ['required_with:items', 'exists:items,id'],
             'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'services' => ['nullable', 'array'],
             'services.*.workshop_service_id' => ['required_with:services', 'exists:workshop_services,id'],
             'services.*.quantity' => ['required_with:services', 'integer', 'min:1'],
+            'services.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['required', 'in:cash,qris,transfer'],
-            'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
+            'bank_account_id' => ['nullable', 'required_if:payment_method,transfer', 'exists:bank_accounts,id'],
         ]);
 
         try {
@@ -130,6 +132,20 @@ class TransactionController extends Controller
         ]);
 
         return response()->json(['data' => $transaction]);
+    }
+
+    public function invoice(Transaction $transaction): View
+    {
+        $transaction->load([
+            'customer',
+            'technician',
+            'user:id,name',
+            'items',
+            'serviceLines',
+            'bankAccount',
+        ]);
+
+        return view('transactions.invoice', compact('transaction'));
     }
 
     private function paymentBadge(Transaction $t): string

@@ -156,21 +156,39 @@ class TransactionServiceTest extends TestCase
     }
 
     #[Test]
-    public function prices_always_come_from_database_not_client_payload(): void
+    public function transaction_uses_submitted_unit_price_not_master_price(): void
     {
+        $service = WorkshopService::create([
+            'code' => 'JSV-PRICE-01',
+            'name' => 'Servis Price Test',
+            'price' => 100000,
+            'is_active' => true,
+        ]);
+
         $tx = app(TransactionService::class)->create([
             'customer_id' => $this->customer->id,
             'items' => [[
                 'item_id' => $this->item->id,
                 'quantity' => 1,
-                'unit_price' => 1,
-                'subtotal' => 1,
+                'unit_price' => 20000,
             ]],
+            'services' => [[
+                'workshop_service_id' => $service->id,
+                'quantity' => 1,
+                'unit_price' => 85000,
+            ]],
+            'technician_id' => $this->technician->id,
         ], $this->user->id);
 
-        $line = $tx->items->first();
-        $this->assertSame(25000.0, (float) $line->unit_price);
-        $this->assertSame(25000.0, (float) $line->subtotal);
+        $itemLine = $tx->items->first();
+        $serviceLine = $tx->serviceLines->first();
+
+        $this->assertSame(20000.0, (float) $itemLine->unit_price);
+        $this->assertSame(20000.0, (float) $itemLine->subtotal);
+        $this->assertSame(85000.0, (float) $serviceLine->unit_price);
+        $this->assertSame(85000.0, (float) $serviceLine->subtotal);
+        $this->assertSame(25000.0, (float) $this->item->fresh()->selling_price);
+        $this->assertSame(100000.0, (float) $service->fresh()->price);
     }
 
     #[Test]

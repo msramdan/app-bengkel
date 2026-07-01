@@ -6,7 +6,7 @@
     @include('layouts.partials.page-hero', [
         'items' => [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Transaksi', 'url' => route('transactions.index')],
+            ['label' => 'Transaksi Penjualan', 'url' => route('transactions.index')],
             ['label' => 'Baru'],
         ],
         'title' => 'Transaksi Baru',

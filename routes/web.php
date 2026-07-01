@@ -60,11 +60,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Fase 2 — Transaksi & komisi teknisi
     Route::resource('workshop-services', WorkshopServiceController::class)->except(['create', 'edit']);
+    Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
     Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
 
     Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show']);
 
     Route::get('financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
+    Route::get('financial-reports/export-pdf', [FinancialReportController::class, 'exportPdf'])->name('financial-reports.export-pdf');
 
     Route::resource('bank-accounts', BankAccountController::class)->except(['create', 'edit']);
 

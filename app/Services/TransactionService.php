@@ -31,8 +31,8 @@ class TransactionService
      *   technician_id?: int|null,
      *   discount?: float,
      *   notes?: string|null,
-     *   items?: array<int, array{item_id: int, quantity: int}>,
-     *   services?: array<int, array{workshop_service_id: int, quantity: int}>
+     *   items?: array<int, array{item_id: int, quantity: int, unit_price?: float}>,
+     *   services?: array<int, array{workshop_service_id: int, quantity: int, unit_price?: float}>
      * }  $payload
      */
     public function create(array $payload, int $userId): Transaction
@@ -57,23 +57,24 @@ class TransactionService
             throw new InvalidArgumentException('Teknisi wajib dipilih untuk transaksi yang memiliki jasa servis.');
         }
 
-        $customerData = $this->resolveCustomer($payload);
+        return DB::transaction(function () use ($payload, $userId, $itemLines, $serviceLines, $type, $hasServices) {
+            $customerData = $this->resolveCustomer($payload);
 
-        $technician = null;
-        if (! empty($payload['technician_id'])) {
-            $technician = Technician::query()->find($payload['technician_id']);
-            if (! $technician || ! $technician->is_active) {
-                throw new InvalidArgumentException('Teknisi tidak valid atau tidak aktif.');
+            $technician = null;
+            if (! empty($payload['technician_id'])) {
+                $technician = Technician::query()->find($payload['technician_id']);
+                if (! $technician || ! $technician->is_active) {
+                    throw new InvalidArgumentException('Teknisi tidak valid atau tidak aktif.');
+                }
             }
-        }
 
-        return DB::transaction(function () use ($payload, $userId, $itemLines, $serviceLines, $type, $hasServices, $technician, $customerData) {
             $resolvedItems = $this->resolveItemLines($itemLines);
             $resolvedServices = $this->resolveServiceLines($serviceLines);
 
             $subtotalItems = $resolvedItems->sum('subtotal');
             $subtotalServices = $resolvedServices->sum('subtotal');
-            $discount = (float) ($payload['discount'] ?? 0);
+            $discount = max(0, (float) ($payload['discount'] ?? 0));
+            $gross = (float) $subtotalItems + (float) $subtotalServices;
 
             $financials = $this->commissionCalculator->calculate(
                 (float) $subtotalItems,
@@ -104,7 +105,7 @@ class TransactionService
                 'user_id' => $userId,
                 'subtotal_items' => $subtotalItems,
                 'subtotal_services' => $subtotalServices,
-                'discount' => min($discount, $subtotalItems + $subtotalServices),
+                'discount' => min($discount, $gross),
                 'total' => $financials['total'],
                 'technician_commission' => $financials['technician_commission'],
                 'owner_service_share' => $financials['owner_service_share'],
@@ -158,7 +159,17 @@ class TransactionService
             if ($itemId <= 0 || $qty <= 0) {
                 continue;
             }
-            $merged[$itemId] = ($merged[$itemId] ?? 0) + $qty;
+
+            if (! isset($merged[$itemId])) {
+                $merged[$itemId] = [
+                    'quantity' => 0,
+                    'unit_price' => isset($line['unit_price']) ? (float) $line['unit_price'] : null,
+                ];
+            } elseif (isset($line['unit_price'])) {
+                $merged[$itemId]['unit_price'] = (float) $line['unit_price'];
+            }
+
+            $merged[$itemId]['quantity'] += $qty;
         }
 
         if (empty($merged)) {
@@ -178,7 +189,8 @@ class TransactionService
         $resolved = collect();
 
         foreach ($itemIds as $itemId) {
-            $qty = $merged[$itemId];
+            $entry = $merged[$itemId];
+            $qty = $entry['quantity'];
             $item = $items->get($itemId);
 
             if (! $item) {
@@ -195,7 +207,11 @@ class TransactionService
                 );
             }
 
-            $unitPrice = (float) $item->selling_price;
+            $unitPrice = $entry['unit_price'] ?? (float) $item->selling_price;
+
+            if ($unitPrice < 0) {
+                throw new InvalidArgumentException("Harga barang \"{$item->name}\" tidak valid.");
+            }
 
             $resolved->push([
                 'item_id' => $item->id,
@@ -288,7 +304,17 @@ class TransactionService
             if ($serviceId <= 0 || $qty <= 0) {
                 continue;
             }
-            $merged[$serviceId] = ($merged[$serviceId] ?? 0) + $qty;
+
+            if (! isset($merged[$serviceId])) {
+                $merged[$serviceId] = [
+                    'quantity' => 0,
+                    'unit_price' => isset($line['unit_price']) ? (float) $line['unit_price'] : null,
+                ];
+            } elseif (isset($line['unit_price'])) {
+                $merged[$serviceId]['unit_price'] = (float) $line['unit_price'];
+            }
+
+            $merged[$serviceId]['quantity'] += $qty;
         }
 
         if (empty($merged)) {
@@ -304,14 +330,19 @@ class TransactionService
 
         $resolved = collect();
 
-        foreach ($merged as $serviceId => $qty) {
+        foreach ($merged as $serviceId => $entry) {
+            $qty = $entry['quantity'];
             $service = $services->get($serviceId);
 
             if (! $service) {
                 throw new InvalidArgumentException('Jasa servis tidak ditemukan atau tidak aktif.');
             }
 
-            $unitPrice = (float) $service->price;
+            $unitPrice = $entry['unit_price'] ?? (float) $service->price;
+
+            if ($unitPrice < 0) {
+                throw new InvalidArgumentException("Harga jasa \"{$service->name}\" tidak valid.");
+            }
 
             $resolved->push([
                 'workshop_service_id' => $service->id,

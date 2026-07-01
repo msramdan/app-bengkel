@@ -55,18 +55,29 @@ class CodeGenerator
   private static function nextFromQuery(string $prefix, $query, string $column): string
   {
     $date = now()->format('Ymd');
-    $pattern = "{$prefix}-{$date}-%";
+    $lockName = 'codegen:'.$prefix.':'.$date;
+    $lock = DB::selectOne('SELECT GET_LOCK(?, 10) as acquired', [$lockName]);
 
-    $latest = (clone $query)
-      ->where($column, 'like', $pattern)
-      ->orderByDesc($column)
-      ->value($column);
-
-    $seq = 1;
-    if ($latest && preg_match('/-(\d+)$/', $latest, $matches)) {
-      $seq = (int) $matches[1] + 1;
+    if (! $lock || (int) $lock->acquired !== 1) {
+      throw new \RuntimeException('Gagal mengalokasikan nomor dokumen. Silakan coba lagi.');
     }
 
-    return sprintf('%s-%s-%04d', $prefix, $date, $seq);
+    try {
+      $pattern = "{$prefix}-{$date}-%";
+
+      $latest = (clone $query)
+        ->where($column, 'like', $pattern)
+        ->orderByDesc($column)
+        ->value($column);
+
+      $seq = 1;
+      if ($latest && preg_match('/-(\d+)$/', $latest, $matches)) {
+        $seq = (int) $matches[1] + 1;
+      }
+
+      return sprintf('%s-%s-%04d', $prefix, $date, $seq);
+    } finally {
+      DB::select('SELECT RELEASE_LOCK(?)', [$lockName]);
+    }
   }
 }

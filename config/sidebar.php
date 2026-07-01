@@ -90,7 +90,7 @@ return [
                     'permissions' => ['transaction view', 'purchase view'],
                     'submenus' => [
                         [
-                            'label' => 'Daftar Transaksi',
+                            'label' => 'Transaksi Penjualan',
                             'route' => 'transactions.index',
                             'permission' => 'transaction view',
                         ],

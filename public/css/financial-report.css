@@ -1,0 +1,188 @@
+/* Laporan Keuangan — web & PDF */
+.fr-summary {
+    margin-bottom: 1rem;
+}
+
+.fr-summary-table td {
+    width: 25%;
+    vertical-align: top;
+    padding: 0 0.4rem;
+}
+
+.fr-summary-table td:first-child {
+    padding-left: 0;
+}
+
+.fr-summary-table td:last-child {
+    padding-right: 0;
+}
+
+.fr-stat-card {
+    background: var(--admin-surface, #fff);
+    border: 1px solid var(--admin-border, #e2e8f0);
+    border-radius: 12px;
+    padding: 1rem;
+    min-height: 96px;
+}
+
+.fr-stat-label {
+    font-size: 0.78rem;
+    color: var(--admin-text-muted, #64748b);
+    margin-bottom: 0.35rem;
+}
+
+.fr-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.fr-stat-meta {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted, #64748b);
+}
+
+.fr-split {
+    margin-bottom: 1rem;
+}
+
+.fr-panel {
+    background: var(--admin-surface, #fff);
+    border: 1px solid var(--admin-border, #e2e8f0);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.fr-panel-block {
+    margin-bottom: 1rem;
+}
+
+.fr-panel-head {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--admin-border, #e2e8f0);
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--admin-text-heading, #1e293b);
+    background: var(--admin-surface-2, #f8fafc);
+}
+
+.fr-panel-body {
+    padding: 1rem;
+}
+
+.fr-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.fr-table th,
+.fr-table td {
+    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid var(--admin-border, #e2e8f0);
+    font-size: 0.875rem;
+}
+
+.fr-table thead th {
+    background: #f8fafc;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.fr-table-simple td:last-child {
+    width: 140px;
+}
+
+.fr-total-row td {
+    border-top: 2px solid var(--admin-border, #e2e8f0);
+    font-weight: 700;
+    padding-top: 0.65rem;
+}
+
+.fr-hint {
+    margin: 0.75rem 0 0;
+    font-size: 0.75rem;
+    color: var(--admin-text-muted, #64748b);
+}
+
+.fr-source-grid td {
+    vertical-align: top;
+}
+
+.fr-source-box {
+    border: 1px solid var(--admin-border, #e2e8f0);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    background: #fff;
+}
+
+.fr-source-box-highlight {
+    background: #f8fafc;
+}
+
+.fr-source-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.fr-source-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.fr-summary-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--admin-border, #e2e8f0);
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.fr-mt {
+    margin-top: 0.75rem;
+}
+
+.fr-text-success { color: #16a34a; }
+.fr-text-warning { color: #ca8a04; }
+.fr-text-info { color: #0284c7; }
+.fr-text-danger { color: #dc2626; }
+.fr-muted { color: #94a3b8; }
+.text-end { text-align: right; }
+.text-center { text-align: center; }
+.fw-medium { font-weight: 600; }
+.fw-semibold { font-weight: 600; }
+.fw-bold { font-weight: 700; }
+
+@media (max-width: 992px) {
+    .fr-summary-table,
+    .fr-summary-table tbody,
+    .fr-summary-table tr,
+    .fr-summary-table td,
+    .fr-split,
+    .fr-split tbody,
+    .fr-split tr,
+    .fr-split td,
+    .fr-source-grid,
+    .fr-source-grid tbody,
+    .fr-source-grid tr,
+    .fr-source-grid td {
+        display: block;
+        width: 100% !important;
+    }
+
+    .fr-summary-table td,
+    .fr-split td {
+        padding: 0 0 0.75rem;
+    }
+
+    .fr-source-grid td[width] {
+        display: none;
+    }
+}
