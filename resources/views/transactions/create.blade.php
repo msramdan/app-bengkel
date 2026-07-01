@@ -81,7 +81,7 @@
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-7">
                                     <label class="form-label small mb-0" for="service_select">Pilih Jasa</label>
-                                    <select id="service_select" class="form-select form-control-clean cart-add-control">
+                                    <select id="service_select" class="form-control-clean cart-add-control atha-searchable-select">
                                         <option value="">-- Pilih Jasa --</option>
                                         @foreach ($services as $service)
                                             <option value="{{ $service->id }}"

@@ -277,7 +277,11 @@
 
                 renderServiceCart();
                 $('#service_qty').val('1');
-                $('#service_select').val('');
+                if (window.AthaSearchableSelect) {
+                    AthaSearchableSelect.clear('#service_select');
+                } else {
+                    $('#service_select').val('').trigger('change');
+                }
             });
 
             $itemsBody.on('click', '.btn-remove-item', function () {
