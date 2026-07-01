@@ -711,6 +711,14 @@ body {
   color: #fff !important;
 }
 
+.table a.btn-action {
+  text-decoration: none;
+}
+
+.table a.btn-action:hover {
+  text-decoration: none;
+}
+
 .table .btn-action-view  { background: #198754; }
 .table .btn-action-edit  { background: #0d6efd; }
 .table .btn-action-delete { background: #dc3545; }

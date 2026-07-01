@@ -13,30 +13,41 @@
     ])
 
     <div class="data-panel mb-4">
-        <div class="data-panel-body">
-            <form method="get" class="row g-2 align-items-end">
+        <div class="data-panel-head">
+            <div class="data-panel-icon"><i class="bi bi-funnel"></i></div>
+            <div class="flex-grow-1">
+                <h3 class="data-panel-title">Filter Periode</h3>
+                <p class="data-panel-desc">
+                    Periode aktif:
+                    <strong>{{ \Carbon\Carbon::parse($from)->format('d/m/Y') }}</strong>
+                    —
+                    <strong>{{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}</strong>
+                </p>
+            </div>
+        </div>
+        <div class="data-panel-body pt-3">
+            <form method="get" class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label small mb-1">Dari Tanggal</label>
+                    <label class="form-label small fw-semibold mb-1">Dari Tanggal</label>
                     <input type="date" name="from" class="form-control form-control-clean" value="{{ $from }}" required>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small mb-1">Sampai Tanggal</label>
+                    <label class="form-label small fw-semibold mb-1">Sampai Tanggal</label>
                     <input type="date" name="to" class="form-control form-control-clean" value="{{ $to }}" required>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+                <div class="col-md-6 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel me-1"></i> Terapkan Filter
+                    </button>
                     <a href="{{ route('financial-reports.export-pdf', ['from' => $from, 'to' => $to]) }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
                     </a>
-                </div>
-                <div class="col-md-3 text-md-end">
-                    <span class="text-muted small">Periode: {{ \Carbon\Carbon::parse($from)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}</span>
                 </div>
             </form>
         </div>
     </div>
 
-    @include('financial-reports.partials.report-content')
+    @include('financial-reports.partials.report-content-web')
 @endsection
 
 @push('css')
