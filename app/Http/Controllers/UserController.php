@@ -26,7 +26,8 @@ class UserController extends Controller
         if (request()->ajax()) {
             $query = User::query()
                 ->with('roles:id,name')
-                ->select('users.*');
+                ->select('users.*')
+                ->latest();
 
             return DataTables::of($query)
                 ->addIndexColumn()

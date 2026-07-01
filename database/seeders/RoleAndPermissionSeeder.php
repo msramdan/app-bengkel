@@ -14,14 +14,23 @@ class RoleAndPermissionSeeder extends Seeder
     {
         $permissions = [
             'dashboard view',
-            'user view',
-            'user create',
-            'user edit',
-            'user delete',
-            'role view',
-            'role create',
-            'role edit',
-            'role delete',
+            'user view', 'user create', 'user edit', 'user delete',
+            'role view', 'role create', 'role edit', 'role delete',
+            'customer view', 'customer create', 'customer edit', 'customer delete',
+            'technician view', 'technician create', 'technician edit', 'technician delete',
+            'item category view', 'item category create', 'item category edit', 'item category delete',
+            'item unit view', 'item unit create', 'item unit edit', 'item unit delete',
+            'item view', 'item create', 'item edit', 'item delete',
+            'item import', 'item export',
+            'stock in view', 'stock in create',
+            'stock out view', 'stock out create',
+            'stock report view',
+            'workshop service view', 'workshop service create', 'workshop service edit', 'workshop service delete',
+            'transaction view', 'transaction create',
+            'purchase view', 'purchase create',
+            'financial report view',
+            'bank account view', 'bank account create', 'bank account edit', 'bank account delete',
+            'settings view', 'settings edit',
         ];
 
         foreach ($permissions as $permission) {
@@ -31,25 +40,49 @@ class RoleAndPermissionSeeder extends Seeder
         $superAdmin = Role::firstOrCreate(['name' => 'Super Admin']);
         $superAdmin->syncPermissions(Permission::all());
 
-        $admin = Role::firstOrCreate(['name' => 'Admin']);
-        $admin->syncPermissions([
+        $kasir = Role::firstOrCreate(['name' => 'Kasir']);
+        $kasir->syncPermissions([
             'dashboard view',
-            'user view',
-            'user create',
-            'user edit',
-            'role view',
+            'customer view', 'customer create', 'customer edit',
+            'technician view',
+            'item view', 'item category view', 'item unit view',
+            'item export',
+            'stock in view', 'stock in create',
+            'stock out view', 'stock out create',
+            'stock report view',
+            'transaction view', 'transaction create',
+            'purchase view', 'purchase create',
+            'financial report view',
         ]);
 
-        $user = User::firstOrCreate(
-            ['email' => 'admin@athamotor.com'],
+        $teknisi = Role::firstOrCreate(['name' => 'Teknisi']);
+        $teknisi->syncPermissions([
+            'dashboard view',
+            'customer view',
+            'technician view',
+            'item view',
+            'stock report view',
+            'transaction view',
+        ]);
+
+        Role::where('name', 'Admin')->each(function (Role $role) {
+            $kasir = Role::firstOrCreate(['name' => 'Kasir']);
+            foreach ($role->users as $user) {
+                $user->syncRoles([$kasir]);
+            }
+            $role->delete();
+        });
+
+        $user = User::updateOrCreate(
+            ['email' => 'saepulramdan244@gmail.com'],
             [
-                'name' => 'Administrator',
+                'name' => 'Saepul Ramdan',
                 'password' => Hash::make('password'),
             ]
         );
 
         if (! $user->hasRole('Super Admin')) {
-            $user->assignRole('Super Admin');
+            $user->syncRoles(['Super Admin']);
         }
     }
 }

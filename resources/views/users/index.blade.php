@@ -51,6 +51,7 @@
             processing: true,
             serverSide: true,
             ajax: '{{ route('users.index') }}',
+            order: [[4, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'name', name: 'name' },

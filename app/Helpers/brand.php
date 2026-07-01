@@ -3,7 +3,33 @@
 if (! function_exists('brand_name')) {
     function brand_name(): string
     {
-        return config('branding.name');
+        try {
+            return app(\App\Services\SettingService::class)->getString('app_name', (string) config('branding.name'));
+        } catch (\Throwable) {
+            return (string) config('branding.name');
+        }
+    }
+}
+
+if (! function_exists('brand_tagline')) {
+    function brand_tagline(): string
+    {
+        try {
+            return app(\App\Services\SettingService::class)->getString('app_tagline', (string) config('branding.tagline'));
+        } catch (\Throwable) {
+            return (string) config('branding.tagline');
+        }
+    }
+}
+
+if (! function_exists('app_description')) {
+    function app_description(): string
+    {
+        try {
+            return app(\App\Services\SettingService::class)->getString('app_description', (string) config('branding.description', ''));
+        } catch (\Throwable) {
+            return (string) config('branding.description', '');
+        }
     }
 }
 

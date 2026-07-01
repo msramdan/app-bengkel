@@ -23,7 +23,7 @@ class RoleController extends Controller
     public function index(): View|JsonResponse
     {
         if (request()->ajax()) {
-            return DataTables::of(Role::query())
+            return DataTables::of(Role::query()->latest('id'))
                 ->addIndexColumn()
                 ->addColumn('users_count', fn (Role $role) => $role->users()->count())
                 ->addColumn('action', 'roles.include.action')

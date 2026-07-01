@@ -2,6 +2,16 @@
 <html lang="id" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('atha-theme');
+                if (theme === 'light' || theme === 'dark') {
+                    document.documentElement.setAttribute('data-bs-theme', theme);
+                }
+            } catch (e) {}
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - {{ brand_name() }}</title>
@@ -19,7 +29,7 @@
 </head>
 <body>
 <div class="admin-layout" id="admin-layout">
-<script>try{if(localStorage.getItem('atha-sidebar-collapsed')==='1'&&window.innerWidth>=992)document.getElementById('admin-layout').classList.add('is-sidebar-collapsed')}catch(e){}</script>
+<script>try{if(localStorage.getItem('atha-sidebar-collapsed')==='1'&&window.innerWidth>=992){document.getElementById('admin-layout').classList.add('is-sidebar-collapsed');document.querySelectorAll('.sidebar-nav .collapse.show').forEach(function(el){el.classList.remove('show');el.style.height=''})}}catch(e){}</script>
     @include('layouts.sidebar')
 
     <div class="admin-main">

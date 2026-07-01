@@ -1,9 +1,24 @@
 <?php
 
+use App\Http\Controllers\BankAccountController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinancialReportController;
+use App\Http\Controllers\ItemCategoryController;
+use App\Http\Controllers\ItemController;
+use App\Http\Controllers\ItemImportExportController;
+use App\Http\Controllers\ItemUnitController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StockInController;
+use App\Http\Controllers\StockOutController;
+use App\Http\Controllers\StockReportController;
+use App\Http\Controllers\TechnicianController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WorkshopServiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -22,4 +37,38 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class);
+
+    // Fase 1 — Master data & inventory
+    Route::resource('customers', CustomerController::class)->except(['create', 'edit']);
+    Route::resource('technicians', TechnicianController::class)->except(['create', 'edit']);
+    Route::resource('item-categories', ItemCategoryController::class)->except(['create', 'edit']);
+    Route::resource('item-units', ItemUnitController::class)->except(['create', 'edit']);
+    Route::get('items/export', [ItemImportExportController::class, 'export'])->name('items.export');
+    Route::get('items/import/template', [ItemImportExportController::class, 'template'])->name('items.import.template');
+    Route::post('items/import', [ItemImportExportController::class, 'import'])->name('items.import');
+    Route::resource('items', ItemController::class)->except(['create', 'edit']);
+
+    Route::get('stock-ins', [StockInController::class, 'index'])->name('stock-ins.index');
+    Route::post('stock-ins', [StockInController::class, 'store'])->name('stock-ins.store');
+    Route::get('stock-ins/batch/{batchNo}', [StockInController::class, 'showBatch'])->name('stock-ins.batch');
+
+    Route::get('stock-outs', [StockOutController::class, 'index'])->name('stock-outs.index');
+    Route::post('stock-outs', [StockOutController::class, 'store'])->name('stock-outs.store');
+    Route::get('stock-outs/batch/{batchNo}', [StockOutController::class, 'showBatch'])->name('stock-outs.batch');
+
+    Route::get('stock-reports', [StockReportController::class, 'index'])->name('stock-reports.index');
+
+    // Fase 2 — Transaksi & komisi teknisi
+    Route::resource('workshop-services', WorkshopServiceController::class)->except(['create', 'edit']);
+    Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
+
+    Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show']);
+
+    Route::get('financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
+
+    Route::resource('bank-accounts', BankAccountController::class)->except(['create', 'edit']);
+
+    Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
+    Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::post('settings/run-reminders', [SettingController::class, 'runReminders'])->name('settings.run-reminders');
 });

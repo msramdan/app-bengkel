@@ -303,6 +303,11 @@ body {
   font-weight: 500;
 }
 
+/* Flyout title — hanya tampil saat sidebar mini */
+.sidebar-flyout-head {
+  display: none;
+}
+
 /* Light mode: sidebar tetap gelap panel-style */
 [data-bs-theme="light"] .admin-sidebar {
   --admin-sidebar-bg: #1E1E1E;
@@ -349,37 +354,66 @@ body {
     font-size: 1.15rem;
   }
 
+  .admin-layout.is-sidebar-collapsed .sidebar-inner,
+  .admin-layout.is-sidebar-collapsed .sidebar-nav,
+  .admin-layout.is-sidebar-collapsed .sidebar-menu {
+    overflow: visible;
+  }
+
   .admin-layout.is-sidebar-collapsed .sidebar-inner {
+    overflow-y: auto;
     overflow-x: visible;
   }
 
-  /* Submenu flyout saat mini */
+  /* Submenu: sembunyi total, muncul flyout saat hover / klik */
   .admin-layout.is-sidebar-collapsed .has-sub {
     position: relative;
   }
 
-  .admin-layout.is-sidebar-collapsed .has-sub > .collapse {
-    display: block !important;
+  .admin-layout.is-sidebar-collapsed .has-sub > .collapse,
+  .admin-layout.is-sidebar-collapsed .has-sub > .collapsing {
+    display: none !important;
     height: auto !important;
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
+    overflow: visible;
     position: absolute;
-    left: calc(100% + 6px);
-    top: 0;
-    min-width: 190px;
+    left: 100%;
+    margin-left: 4px;
+    top: var(--flyout-top, 0);
+    min-width: 210px;
     background: var(--admin-sidebar-bg);
     border: 1px solid var(--admin-border);
     border-radius: 8px;
-    padding: 0.35rem 0;
-    z-index: 1060;
-    transition: opacity 0.15s, visibility 0.15s;
+    padding: 0;
+    z-index: 1065;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
   }
 
-  .admin-layout.is-sidebar-collapsed .has-sub:hover > .collapse {
-    visibility: visible;
-    opacity: 1;
+  .admin-layout.is-sidebar-collapsed .has-sub:hover > .collapse,
+  .admin-layout.is-sidebar-collapsed .has-sub.is-flyout-open > .collapse {
+    display: block !important;
     pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .admin-layout.is-sidebar-collapsed .sidebar-flyout-head {
+    display: block;
+    padding: 0.55rem 0.85rem 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    border-bottom: 1px solid var(--admin-border);
+    white-space: nowrap;
+  }
+
+  .admin-layout.is-sidebar-collapsed .sidebar-submenu {
+    padding: 0.35rem 0;
   }
 
   .admin-layout.is-sidebar-collapsed .sidebar-submenu-link {
@@ -1473,6 +1507,37 @@ a.page-trail-link:hover {
   margin-top: 0.35rem;
 }
 
+/* Keranjang tambah barang — input & tombol sejajar */
+.cart-add-row .form-label {
+  min-height: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.cart-add-row .cart-add-action-label {
+  visibility: hidden;
+  user-select: none;
+}
+
+.cart-add-row .cart-add-control,
+.cart-add-row .cart-add-btn {
+  min-height: calc(1.5em + 0.75rem + 2px);
+}
+
+.cart-add-row .cart-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.cart-add-hint {
+  min-height: 1.1rem;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--admin-text-muted);
+}
+
 .form-section-line {
   height: 1px;
   background: var(--admin-border);
@@ -1695,4 +1760,249 @@ input[type="password"].form-control-icon::placeholder {
 
 @media (max-width: 575.98px) {
   .detail-item { grid-template-columns: 1fr; gap: 0.25rem; }
+}
+
+/* Entity photo — teknisi & barang */
+.entity-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--admin-border);
+  display: block;
+}
+
+.entity-thumb-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-surface-2);
+  color: var(--admin-text-muted);
+  font-size: 1rem;
+}
+
+.entity-photo-field {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.entity-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  border: 1px dashed var(--admin-border);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--admin-surface-2);
+}
+
+.entity-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.entity-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 0.35rem;
+}
+
+.entity-photo-placeholder i {
+  font-size: 1.35rem;
+}
+
+.entity-photo-actions {
+  flex: 1;
+  min-width: 0;
+}
+
+.entity-photo-detail {
+  max-width: 180px;
+  max-height: 180px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--admin-border);
+}
+
+@media (max-width: 575.98px) {
+  .entity-photo-field { flex-direction: column; }
+}
+
+/* Dashboard stock alerts */
+.dashboard-alert {
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  overflow: hidden;
+}
+
+.dashboard-alert-warning {
+  background: rgba(220, 53, 69, 0.06);
+  border-color: rgba(220, 53, 69, 0.25);
+}
+
+.dashboard-alert-ok {
+  background: rgba(25, 135, 84, 0.08);
+  border-color: rgba(25, 135, 84, 0.2);
+  color: var(--admin-text);
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+}
+
+.dashboard-alert-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid rgba(220, 53, 69, 0.15);
+}
+
+.dashboard-alert-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(220, 53, 69, 0.12);
+  color: #dc3545;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.dashboard-alert-title {
+  font-weight: 600;
+  color: var(--admin-text-heading);
+}
+
+.dashboard-alert-sub {
+  font-size: 0.84rem;
+  color: var(--admin-text-muted);
+  margin-top: 0.15rem;
+}
+
+.dashboard-alert-body {
+  padding: 0.75rem 1.1rem 1rem;
+  background: var(--admin-surface);
+}
+
+/* ── Dashboard KPI & charts ── */
+.dash-kpi {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 12px;
+  height: 100%;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.dash-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.dash-kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.dash-kpi-primary .dash-kpi-icon { background: rgba(99, 102, 241, 0.12); color: #6366f1; }
+.dash-kpi-success .dash-kpi-icon { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+.dash-kpi-warning .dash-kpi-icon { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.dash-kpi-info .dash-kpi-icon { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
+
+.dash-kpi-label {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+}
+
+.dash-kpi-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--admin-text-heading);
+  line-height: 1.2;
+}
+
+.dash-kpi-meta {
+  font-size: 0.72rem;
+  color: var(--admin-text-muted);
+  margin-top: 0.25rem;
+}
+
+.dash-mini-stat {
+  text-align: center;
+  padding: 1rem 0.75rem !important;
+}
+
+.dash-mini-stat-danger {
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(254, 242, 242, 0.5);
+}
+
+.dash-mini-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.dash-chart-wrap {
+  position: relative;
+  height: 260px;
+}
+
+.dash-chart-donut {
+  position: relative;
+  width: 100%;
+  max-width: 240px;
+  height: 240px;
+}
+
+.dash-quick-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface-2);
+  color: var(--admin-text-heading);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: center;
+  height: 100%;
+  min-height: 88px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dash-quick-link i {
+  font-size: 1.35rem;
+  color: var(--accent-bright);
+}
+
+.dash-quick-link:hover {
+  background: var(--admin-surface);
+  border-color: var(--accent-bright);
+  color: var(--accent-bright);
 }

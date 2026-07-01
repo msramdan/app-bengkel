@@ -49,8 +49,10 @@
             processing: true,
             serverSide: true,
             ajax: '{{ route('roles.index') }}',
+            order: [[1, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },
+                { data: 'id', name: 'id', visible: false, searchable: false },
                 { data: 'name', name: 'name' },
                 { data: 'users_count', name: 'users_count', searchable: false },
                 { data: 'action', orderable: false, searchable: false, className: 'text-end' },
