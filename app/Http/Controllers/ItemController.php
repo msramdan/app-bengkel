@@ -49,6 +49,7 @@ class ItemController extends Controller
                     return '<span class="'.$class.'">'.number_format($i->stock).'</span>';
                 })
                 ->addColumn('selling_price', fn (Item $i) => 'Rp '.number_format((float) $i->selling_price, 0, ',', '.'))
+                ->addColumn('member_price', fn (Item $i) => 'Rp '.number_format((float) $i->member_price, 0, ',', '.'))
                 ->addColumn('status', fn (Item $i) => $i->is_active
                     ? '<span class="badge bg-success-subtle text-success">Aktif</span>'
                     : '<span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>')
@@ -73,6 +74,7 @@ class ItemController extends Controller
             'stock_opname' => ['nullable', 'integer', 'min:0'],
             'purchase_price' => ['nullable', 'numeric', 'min:0'],
             'selling_price' => ['nullable', 'numeric', 'min:0'],
+            'member_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
         ], $this->photoRules()));
@@ -85,6 +87,7 @@ class ItemController extends Controller
             'stock_opname' => $validated['stock_opname'] ?? 0,
             'purchase_price' => $validated['purchase_price'] ?? 0,
             'selling_price' => $validated['selling_price'] ?? 0,
+            'member_price' => $validated['member_price'] ?? 0,
             'is_active' => $request->boolean('is_active', true),
         ]);
 
@@ -109,6 +112,7 @@ class ItemController extends Controller
             'stock_opname' => ['nullable', 'integer', 'min:0'],
             'purchase_price' => ['nullable', 'numeric', 'min:0'],
             'selling_price' => ['nullable', 'numeric', 'min:0'],
+            'member_price' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
         ], $this->photoRules()));
@@ -119,6 +123,7 @@ class ItemController extends Controller
             'stock_opname' => $validated['stock_opname'] ?? 0,
             'purchase_price' => $validated['purchase_price'] ?? 0,
             'selling_price' => $validated['selling_price'] ?? 0,
+            'member_price' => $validated['member_price'] ?? 0,
             'is_active' => $request->boolean('is_active'),
         ]);
 

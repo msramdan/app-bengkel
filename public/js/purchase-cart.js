@@ -22,6 +22,10 @@
                 return settings.items.find(function (i) { return String(i.id) === String(id); });
             }
 
+            function recalcLine(line) {
+                line.subtotal = Math.round(line.unit_price * line.quantity);
+            }
+
             function renderCart() {
                 $itemsBody.empty();
                 if (!cart.length) {
@@ -32,9 +36,13 @@
                         $itemsBody.append(`
                             <tr>
                                 <td><div class="fw-medium">${line.code}</div><div class="text-muted small">${line.name}</div></td>
-                                <td class="text-center">${line.quantity}</td>
+                                <td class="text-center" style="width:90px">
+                                    <input type="number" class="form-control form-control-clean cart-qty-input"
+                                        data-index="${index}"
+                                        value="${line.quantity}" min="1" step="1">
+                                </td>
                                 <td class="text-end">${formatRp(line.unit_price)}</td>
-                                <td class="text-end fw-medium">${formatRp(line.subtotal)}</td>
+                                <td class="text-end fw-medium cart-subtotal">${formatRp(line.subtotal)}</td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-remove-item" data-index="${index}">
                                         <i class="bi bi-trash"></i>
@@ -89,7 +97,7 @@
 
                 if (existing) {
                     existing.quantity = newQty;
-                    existing.subtotal = unitPrice * newQty;
+                    recalcLine(existing);
                 } else {
                     cart.push({
                         item_id: item.id,
@@ -115,11 +123,57 @@
                 renderCart();
             });
 
+            function handleQtyInput($input, showError) {
+                const index = parseInt($input.data('index'), 10);
+                const line = cart[index];
+                if (!line) {
+                    return false;
+                }
+
+                const qty = parseInt($input.val(), 10);
+                if (isNaN(qty) || qty < 1) {
+                    if (showError) {
+                        $input.val(line.quantity);
+                        Swal.fire({ icon: 'warning', title: 'Qty harus minimal 1.' });
+                    }
+                    return false;
+                }
+
+                line.quantity = qty;
+                recalcLine(line);
+                $input.val(qty);
+                $input.closest('tr').find('.cart-subtotal').text(formatRp(line.subtotal));
+                updateSummary();
+                return true;
+            }
+
+            function validateCartQty() {
+                for (let i = 0; i < cart.length; i++) {
+                    if (cart[i].quantity < 1) {
+                        Swal.fire({ icon: 'warning', title: 'Qty barang tidak valid.', text: cart[i].name });
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            $itemsBody.on('input', '.cart-qty-input', function () {
+                handleQtyInput($(this), false);
+            });
+
+            $itemsBody.on('blur', '.cart-qty-input', function () {
+                handleQtyInput($(this), true);
+            });
+
             $('#discount').on('change input', updateSummary);
 
             $('#purchase-form').on('submit', function (e) {
                 e.preventDefault();
                 if (!cart.length) {
+                    return;
+                }
+
+                if (!validateCartQty()) {
                     return;
                 }
 

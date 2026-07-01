@@ -15,7 +15,7 @@ use App\Support\CodeGenerator;
 
 #[Fillable([
     'code', 'name', 'photo', 'category_id', 'unit_id', 'stock', 'stock_opname',
-    'purchase_price', 'selling_price', 'description', 'is_active',
+    'purchase_price', 'selling_price', 'member_price', 'description', 'is_active',
 ])]
 class Item extends Model
 {
@@ -61,6 +61,7 @@ class Item extends Model
         return [
             'purchase_price' => 'decimal:2',
             'selling_price' => 'decimal:2',
+            'member_price' => 'decimal:2',
             'is_active' => 'boolean',
             'stock' => 'integer',
             'stock_opname' => 'integer',

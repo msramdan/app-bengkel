@@ -35,6 +35,7 @@ class ItemExcelService
         'Stock Opname',
         'Harga Beli',
         'Harga Jual',
+        'Harga Member',
         'Deskripsi',
         'Aktif (Ya/Tidak)',
     ];
@@ -57,11 +58,11 @@ class ItemExcelService
 
         $headers = [
             'Kode', 'Nama Barang', 'Kategori', 'Satuan', 'Stok',
-            'Stock Opname', 'Harga Beli', 'Harga Jual', 'Deskripsi', 'Aktif',
+            'Stock Opname', 'Harga Beli', 'Harga Jual', 'Harga Member', 'Deskripsi', 'Aktif',
         ];
 
         $sheet->fromArray($headers, null, 'A1');
-        $this->styleHeaderRow($sheet, 'A1:J1');
+        $this->styleHeaderRow($sheet, 'A1:K1');
 
         $items = Item::query()
             ->with(['category:id,name', 'unit:id,name,abbreviation'])
@@ -79,13 +80,14 @@ class ItemExcelService
                 (int) $item->stock_opname,
                 (float) $item->purchase_price,
                 (float) $item->selling_price,
+                (float) $item->member_price,
                 $item->description ?? '',
                 $item->is_active ? 'Ya' : 'Tidak',
             ], null, "A{$row}");
             $row++;
         }
 
-        $this->autoSizeColumns($sheet, 'A', 'J');
+        $this->autoSizeColumns($sheet, 'A', 'K');
 
         return $this->streamSpreadsheet(
             $spreadsheet,
@@ -163,8 +165,9 @@ class ItemExcelService
                 'stock_opname' => max(0, (int) $sheet->getCell("D{$row}")->getValue()),
                 'purchase_price' => max(0, (float) $sheet->getCell("E{$row}")->getValue()),
                 'selling_price' => max(0, (float) $sheet->getCell("F{$row}")->getValue()),
-                'description' => trim((string) $sheet->getCell("G{$row}")->getValue()) ?: null,
-                'is_active' => $this->parseYesNo($sheet->getCell("H{$row}")->getValue(), true),
+                'member_price' => max(0, (float) $sheet->getCell("G{$row}")->getValue()),
+                'description' => trim((string) $sheet->getCell("H{$row}")->getValue()) ?: null,
+                'is_active' => $this->parseYesNo($sheet->getCell("I{$row}")->getValue(), true),
             ]);
 
             $created++;
@@ -198,7 +201,7 @@ class ItemExcelService
         $importSheet = $spreadsheet->createSheet();
         $importSheet->setTitle(self::IMPORT_SHEET);
         $importSheet->fromArray(self::IMPORT_HEADERS, null, 'A1');
-        $this->styleHeaderRow($importSheet, 'A1:H1');
+        $this->styleHeaderRow($importSheet, 'A1:I1');
 
         $categoryLast = max(2, count($categories) + 1);
         $unitLast = max(2, count($units) + 1);
@@ -209,9 +212,9 @@ class ItemExcelService
 
         $this->applyListValidation($importSheet, 'B', 2, self::IMPORT_MAX_ROWS + 1, $categoryFormula);
         $this->applyListValidation($importSheet, 'C', 2, self::IMPORT_MAX_ROWS + 1, $unitFormula);
-        $this->applyListValidation($importSheet, 'H', 2, self::IMPORT_MAX_ROWS + 1, $activeFormula);
+        $this->applyListValidation($importSheet, 'I', 2, self::IMPORT_MAX_ROWS + 1, $activeFormula);
 
-        $this->autoSizeColumns($importSheet, 'A', 'H');
+        $this->autoSizeColumns($importSheet, 'A', 'I');
 
         $categorySheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
         $unitSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
@@ -232,7 +235,8 @@ class ItemExcelService
             ['4. Stok awal tetap 0 — gunakan menu Stok Masuk setelah import.'],
             ['5. Isi data mulai baris 2 ke bawah pada sheet Import Barang.'],
             ['6. Kolom wajib: Nama Barang, Kategori, Satuan.'],
-            ['7. Aktif: isi "Ya" atau "Tidak" (default Ya jika dikosongkan).'],
+            ['7. Harga Beli, Harga Jual, dan Harga Member boleh dikosongkan (default 0).'],
+            ['8. Aktif: isi "Ya" atau "Tidak" (default Ya jika dikosongkan).'],
             [''],
             ['Sheet referensi kategori & satuan tersembunyi — jangan dihapus dari file Excel.'],
         ];

@@ -99,7 +99,8 @@ class ItemImportExportTest extends TestCase
         $sheet->setCellValue('D2', 5);
         $sheet->setCellValue('E2', 10000);
         $sheet->setCellValue('F2', 15000);
-        $sheet->setCellValue('H2', 'Ya');
+        $sheet->setCellValue('G2', 13000);
+        $sheet->setCellValue('I2', 'Ya');
         $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
         $writer->save($path);
 
@@ -115,6 +116,7 @@ class ItemImportExportTest extends TestCase
             'category_id' => $this->category->id,
             'unit_id' => $this->unit->id,
             'stock' => 0,
+            'member_price' => 13000,
         ]);
 
         @unlink($path);

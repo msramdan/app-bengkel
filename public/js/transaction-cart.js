@@ -78,6 +78,11 @@
                 return settings.services.find(function (s) { return String(s.id) === String(id); });
             }
 
+            function getItemStock(itemId) {
+                const item = findItem(itemId);
+                return item ? parseInt(item.stock, 10) : 0;
+            }
+
             function recalcLine(line) {
                 line.subtotal = Math.round(line.unit_price * line.quantity);
             }
@@ -95,7 +100,12 @@
                                     <div class="fw-medium">${line.code}</div>
                                     <div class="text-muted small">${line.name}</div>
                                 </td>
-                                <td class="text-center">${line.quantity}</td>
+                                <td class="text-center" style="width:90px">
+                                    <input type="number" class="form-control form-control-clean cart-qty-input"
+                                        data-type="item" data-index="${index}"
+                                        value="${line.quantity}" min="1" step="1"
+                                        title="Stok tersedia: ${getItemStock(line.item_id).toLocaleString('id-ID')}">
+                                </td>
                                 <td class="text-end" style="width:130px">
                                     <input type="number" class="form-control form-control-clean cart-price-input text-end"
                                         data-type="item" data-index="${index}"
@@ -129,7 +139,11 @@
                                     <div class="fw-medium">${line.code}</div>
                                     <div class="text-muted small">${line.name}</div>
                                 </td>
-                                <td class="text-center">${line.quantity}</td>
+                                <td class="text-center" style="width:90px">
+                                    <input type="number" class="form-control form-control-clean cart-qty-input"
+                                        data-type="service" data-index="${index}"
+                                        value="${line.quantity}" min="1" step="1">
+                                </td>
                                 <td class="text-end" style="width:130px">
                                     <input type="number" class="form-control form-control-clean cart-price-input text-end"
                                         data-type="service" data-index="${index}"
@@ -314,6 +328,98 @@
                 updateSummary();
             }
 
+            function applyQtyToLine($input, cart, line, qty, showError) {
+                if (isNaN(qty) || qty < 1) {
+                    if (showError) {
+                        $input.val(line.quantity);
+                        Swal.fire({ icon: 'warning', title: 'Qty harus minimal 1.' });
+                    }
+                    return false;
+                }
+
+                if (cart === itemCart) {
+                    const stock = getItemStock(line.item_id);
+                    if (qty > stock) {
+                        if (showError) {
+                            $input.val(line.quantity);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Stok tidak mencukupi.',
+                                text: line.name + ' — tersedia: ' + stock.toLocaleString('id-ID'),
+                            });
+                        }
+                        return false;
+                    }
+                }
+
+                line.quantity = qty;
+                recalcLine(line);
+                $input.val(qty);
+                $input.closest('tr').find('.cart-subtotal').text(formatRp(line.subtotal));
+                updateSummary();
+                return true;
+            }
+
+            function handleQtyInput($input, showError) {
+                const index = parseInt($input.data('index'), 10);
+                const type = $input.data('type');
+                const cart = type === 'item' ? itemCart : serviceCart;
+                const line = cart[index];
+                if (!line) {
+                    return false;
+                }
+
+                const qty = parseInt($input.val(), 10);
+                return applyQtyToLine($input, cart, line, qty, showError);
+            }
+
+            function validateItemCartStock() {
+                for (let i = 0; i < itemCart.length; i++) {
+                    const line = itemCart[i];
+                    const stock = getItemStock(line.item_id);
+                    if (line.quantity < 1) {
+                        Swal.fire({ icon: 'warning', title: 'Qty barang tidak valid.', text: line.name });
+                        return false;
+                    }
+                    if (line.quantity > stock) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Stok tidak mencukupi.',
+                            text: line.name + ' — tersedia: ' + stock.toLocaleString('id-ID'),
+                        });
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            function validateServiceCartQty() {
+                for (let i = 0; i < serviceCart.length; i++) {
+                    const line = serviceCart[i];
+                    if (line.quantity < 1) {
+                        Swal.fire({ icon: 'warning', title: 'Qty jasa tidak valid.', text: line.name });
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            $itemsBody.on('input', '.cart-qty-input', function () {
+                handleQtyInput($(this), false);
+            });
+
+            $itemsBody.on('blur', '.cart-qty-input', function () {
+                handleQtyInput($(this), true);
+            });
+
+            $servicesBody.on('input', '.cart-qty-input', function () {
+                handleQtyInput($(this), false);
+            });
+
+            $servicesBody.on('blur', '.cart-qty-input', function () {
+                handleQtyInput($(this), true);
+            });
+
             $itemsBody.on('input change', '.cart-price-input', function () {
                 handlePriceInput($(this));
             });
@@ -327,6 +433,10 @@
 
                 if (!itemCart.length && !serviceCart.length) {
                     Swal.fire({ icon: 'warning', title: 'Tambahkan minimal satu barang atau jasa.' });
+                    return;
+                }
+
+                if (!validateItemCartStock() || !validateServiceCartQty()) {
                     return;
                 }
 

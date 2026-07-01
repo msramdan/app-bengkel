@@ -2200,6 +2200,16 @@ input[type="password"].form-control-icon::placeholder {
   display: inline-block;
 }
 
+.cart-qty-input {
+  width: 72px;
+  height: 34px;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.8125rem;
+  text-align: center;
+  margin: 0 auto;
+  display: block;
+}
+
 .customer-inline-panel {
   background: var(--admin-surface-2);
 }
