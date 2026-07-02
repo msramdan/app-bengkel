@@ -59,6 +59,7 @@ class TransactionService
 
         return DB::transaction(function () use ($payload, $userId, $itemLines, $serviceLines, $type, $hasServices) {
             $customerData = $this->resolveCustomer($payload);
+            $useMemberPricing = $this->customerQualifiesForMemberPricing($customerData, $payload);
 
             $technician = null;
             if (! empty($payload['technician_id'])) {
@@ -68,7 +69,7 @@ class TransactionService
                 }
             }
 
-            $resolvedItems = $this->resolveItemLines($itemLines);
+            $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing);
             $resolvedServices = $this->resolveServiceLines($serviceLines);
 
             $subtotalItems = $resolvedItems->sum('subtotal');
@@ -149,7 +150,7 @@ class TransactionService
         });
     }
 
-    private function resolveItemLines(array $lines): \Illuminate\Support\Collection
+    private function resolveItemLines(array $lines, bool $useMemberPricing = false): \Illuminate\Support\Collection
     {
         $merged = [];
 
@@ -207,7 +208,7 @@ class TransactionService
                 );
             }
 
-            $unitPrice = $entry['unit_price'] ?? (float) $item->selling_price;
+            $unitPrice = $entry['unit_price'] ?? $item->resolveSalePrice($useMemberPricing);
 
             if ($unitPrice < 0) {
                 throw new InvalidArgumentException("Harga barang \"{$item->name}\" tidak valid.");
@@ -263,6 +264,7 @@ class TransactionService
         $customer = Customer::create([
             'code' => Customer::generateCode(),
             'name' => $name,
+            'is_member' => false,
             'phone' => isset($data['phone']) ? trim((string) $data['phone']) ?: null : null,
             'address' => isset($data['address']) ? trim((string) $data['address']) ?: null : null,
         ]);
@@ -271,6 +273,23 @@ class TransactionService
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
         ];
+    }
+
+    private function customerQualifiesForMemberPricing(array $customerData, array $payload): bool
+    {
+        $mode = $payload['customer_mode'] ?? null;
+
+        if ($mode === 'umum' || $mode === 'new') {
+            return false;
+        }
+
+        if (empty($customerData['customer_id'])) {
+            return false;
+        }
+
+        return (bool) Customer::query()
+            ->where('id', $customerData['customer_id'])
+            ->value('is_member');
     }
 
     /**

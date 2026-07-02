@@ -31,6 +31,7 @@
                             <th>Nama</th>
                             <th>Telepon</th>
                             <th>Email</th>
+                            <th>Tipe</th>
                             <th>Dibuat</th>
                             <th class="text-end">Aksi</th>
                         </tr>
@@ -63,6 +64,13 @@
                             <div class="col-md-6">
                                 <label class="form-label">Email</label>
                                 <input type="email" name="email" class="form-control form-control-clean">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_member" value="1" class="form-check-input" id="is_member">
+                                    <label class="form-check-label" for="is_member">Pelanggan Member</label>
+                                </div>
+                                <div class="form-hint-sm">Member mendapat harga barang khusus saat transaksi penjualan.</div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Alamat</label>
@@ -109,13 +117,14 @@
             processing: true,
             serverSide: true,
             ajax: '{{ route('customers.index') }}',
-            order: [[5, 'desc']],
+            order: [[6, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'code', name: 'code' },
                 { data: 'name', name: 'name' },
                 { data: 'phone', name: 'phone' },
                 { data: 'email', name: 'email' },
+                { data: 'member_label', name: 'is_member', orderable: false, searchable: false },
                 { data: 'created_at', name: 'created_at' },
                 { data: 'action', orderable: false, searchable: false, className: 'text-end' },
             ],
@@ -127,11 +136,17 @@
             showUrlTemplate: '{{ route('customers.show', '__ID__') }}',
             destroyUrlTemplate: '{{ route('customers.destroy', '__ID__') }}',
             entityName: 'Pelanggan',
+            onFormReset: function (mode) {
+                if (mode === 'create') {
+                    $('#is_member').prop('checked', false);
+                }
+            },
             renderShow: function (d) {
                 return `
                     <dl class="detail-list mb-0">
                         <dt>Kode</dt><dd>${d.code}</dd>
                         <dt>Nama</dt><dd>${d.name}</dd>
+                        <dt>Tipe</dt><dd>${d.is_member ? '<span class="badge bg-primary-subtle text-primary">Member</span>' : '<span class="badge bg-secondary-subtle text-secondary">Pelanggan Biasa</span>'}</dd>
                         <dt>Telepon</dt><dd>${d.phone || '-'}</dd>
                         <dt>Email</dt><dd>${d.email || '-'}</dd>
                         <dt>Alamat</dt><dd>${d.address || '-'}</dd>

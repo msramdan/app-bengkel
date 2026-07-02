@@ -54,6 +54,90 @@
                 return false;
             }
 
+            function usesMemberPricing() {
+                if (getCustomerMode() !== 'existing') {
+                    return false;
+                }
+
+                const raw = $('#customer_id').find('option:selected').data('isMember');
+
+                return raw === 1 || raw === '1' || raw === true;
+            }
+
+            function getDefaultItemPrice(item) {
+                if (!item) {
+                    return 0;
+                }
+
+                if (usesMemberPricing()) {
+                    const memberPrice = parseFloat(item.member_price);
+                    if (!isNaN(memberPrice) && memberPrice > 0) {
+                        return memberPrice;
+                    }
+                }
+
+                return parseFloat(item.selling_price) || 0;
+            }
+
+            function updateCustomerRemark() {
+                const mode = getCustomerMode();
+                const $remark = $('#customer-type-remark');
+                const $badge = $('#customer-type-badge');
+
+                if (!hasCustomerSelected()) {
+                    $remark.addClass('d-none');
+                    return;
+                }
+
+                let label = 'Pelanggan Biasa';
+                let badgeClass = 'badge bg-secondary-subtle text-secondary';
+
+                if (mode === 'existing' && usesMemberPricing()) {
+                    label = 'Member';
+                    badgeClass = 'badge bg-primary-subtle text-primary';
+                } else if (mode === 'umum') {
+                    label = 'Pelanggan Biasa (Umum)';
+                } else if (mode === 'new') {
+                    label = 'Pelanggan Biasa (Baru)';
+                }
+
+                $badge.attr('class', badgeClass).text(label);
+                $remark.removeClass('d-none');
+            }
+
+            function toggleItemsSectionLock() {
+                const locked = !hasCustomerSelected();
+
+                $('#items-section-lock').toggleClass('d-none', !locked);
+                $('#item_select, #item_qty, #btn-add-item').prop('disabled', locked);
+            }
+
+            function updateItemHint() {
+                const item = findItem($('#item_select').val());
+                if (!item) {
+                    $('#item-hint').text('');
+                    return;
+                }
+
+                const price = getDefaultItemPrice(item);
+                const priceLabel = usesMemberPricing() ? 'Harga Member' : 'Harga Jual';
+                $('#item-hint').text(
+                    'Stok: ' + Number(item.stock).toLocaleString('id-ID') + ' | ' + priceLabel + ': ' + formatRp(price)
+                );
+            }
+
+            function recalculateItemCartPrices() {
+                itemCart.forEach(function (line) {
+                    const item = findItem(line.item_id);
+                    if (!item) {
+                        return;
+                    }
+
+                    line.unit_price = getDefaultItemPrice(item);
+                    recalcLine(line);
+                });
+            }
+
             function toggleNewCustomerFields() {
                 if (getCustomerMode() === 'new') {
                     $('#new-customer-fields').removeClass('d-none');
@@ -199,19 +283,30 @@
 
             $('#customer_id').on('change', function () {
                 toggleNewCustomerFields();
+                updateCustomerRemark();
+                recalculateItemCartPrices();
+                toggleItemsSectionLock();
+                updateItemHint();
+                renderItemCart();
                 updateSummary();
             });
 
-            $('#new_customer_name, #new_customer_phone, #new_customer_address').on('input', updateSummary);
+            $('#new_customer_name, #new_customer_phone, #new_customer_address').on('input', function () {
+                updateCustomerRemark();
+                toggleItemsSectionLock();
+                updateSummary();
+            });
 
             $('#customer_id, #technician_id, #discount, #payment_method, #bank_account_id').on('change input', updateSummary);
 
-            $('#item_select').on('change', function () {
-                const item = findItem($(this).val());
-                $('#item-hint').text(item ? 'Stok: ' + Number(item.stock).toLocaleString('id-ID') + ' | Harga: ' + formatRp(item.selling_price) : '');
-            });
+            $('#item_select').on('change', updateItemHint);
 
             $('#btn-add-item').on('click', function () {
+                if (!hasCustomerSelected()) {
+                    Swal.fire({ icon: 'warning', title: 'Pilih pelanggan terlebih dahulu sebelum menambah barang.' });
+                    return;
+                }
+
                 const itemId = $('#item_select').val();
                 const qty = parseInt($('#item_qty').val(), 10);
                 const item = findItem(itemId);
@@ -233,7 +328,7 @@
                     return;
                 }
 
-                const unitPrice = parseFloat(item.selling_price);
+                const unitPrice = getDefaultItemPrice(item);
                 if (existing) {
                     existing.quantity = newQty;
                     recalcLine(existing);
@@ -515,6 +610,8 @@
 
             updateSummary();
             toggleNewCustomerFields();
+            updateCustomerRemark();
+            toggleItemsSectionLock();
         },
     };
 })(jQuery);

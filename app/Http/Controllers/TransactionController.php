@@ -61,13 +61,13 @@ class TransactionController extends Controller
     public function create(): View
     {
         return view('transactions.create', [
-            'customers' => Customer::query()->orderBy('name')->get(['id', 'code', 'name', 'phone']),
+            'customers' => Customer::query()->orderBy('name')->get(['id', 'code', 'name', 'phone', 'is_member']),
             'technicians' => Technician::query()->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name', 'commission_percent']),
             'items' => Item::query()
                 ->where('is_active', true)
                 ->where('stock', '>', 0)
                 ->orderBy('name')
-                ->get(['id', 'code', 'name', 'stock', 'selling_price']),
+                ->get(['id', 'code', 'name', 'stock', 'selling_price', 'member_price']),
             'services' => WorkshopService::query()
                 ->where('is_active', true)
                 ->orderBy('name')

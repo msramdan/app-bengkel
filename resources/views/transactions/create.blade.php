@@ -17,23 +17,75 @@
         @csrf
         <div class="row g-4">
             <div class="col-lg-8">
-                <div class="data-panel mb-4">
+                <div class="data-panel mb-4" id="customer-panel">
+                    <div class="data-panel-head">
+                        <h2 class="data-panel-title"><i class="bi bi-person me-1"></i> Pelanggan</h2>
+                    </div>
+                    <div class="data-panel-body">
+                        <div class="mb-3">
+                            <label class="form-label">Pilih Pelanggan <span class="text-danger">*</span></label>
+                            <select id="customer_id" class="form-control-clean atha-searchable-select">
+                                <option value="">-- Pilih Pelanggan --</option>
+                                <option value="__umum__" data-is-member="0">{{ config('workshop.walk_in_customer_label', 'Umum') }} (pelanggan lewat)</option>
+                                <optgroup label="Pelanggan terdaftar">
+                                    @foreach ($customers as $customer)
+                                        <option value="{{ $customer->id }}" data-is-member="{{ $customer->is_member ? '1' : '0' }}">
+                                            {{ $customer->code }} — {{ $customer->name }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                                <option value="__new__" data-is-member="0">+ Pelanggan baru...</option>
+                            </select>
+                            <div class="form-hint-sm">Pilih pelanggan terlebih dahulu sebelum menambah barang. Harga member hanya berlaku untuk barang.</div>
+                        </div>
+                        <div id="customer-type-remark" class="mb-3 d-none">
+                            <span class="text-muted small me-1">Tipe:</span>
+                            <span id="customer-type-badge" class="badge bg-secondary-subtle text-secondary">Pelanggan Biasa</span>
+                        </div>
+                        <div id="new-customer-fields" class="border rounded p-3 d-none customer-inline-panel">
+                            <div class="small fw-semibold mb-2"><i class="bi bi-person-plus me-1"></i> Data pelanggan baru</div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-0" for="new_customer_name">Nama <span class="text-danger">*</span></label>
+                                <input type="text" id="new_customer_name" class="form-control form-control-clean" placeholder="Nama pelanggan" autocomplete="off">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-0" for="new_customer_phone">Telepon</label>
+                                <input type="text" id="new_customer_phone" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label small mb-0" for="new_customer_address">Alamat</label>
+                                <input type="text" id="new_customer_address" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
+                            </div>
+                            <div class="form-hint-sm mt-2 mb-0">Disimpan sebagai pelanggan biasa (bukan member) saat transaksi disimpan.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-panel mb-4" id="items-section">
                     <div class="data-panel-head">
                         <h2 class="data-panel-title"><i class="bi bi-box-seam me-1"></i> Barang / Sparepart</h2>
                     </div>
-                    <div class="data-panel-body">
+                    <div class="data-panel-body position-relative">
+                        <div id="items-section-lock" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-75 rounded z-1">
+                            <div class="text-center text-muted px-3">
+                                <i class="bi bi-person-check fs-4 d-block mb-2"></i>
+                                <div class="fw-medium">Pilih pelanggan terlebih dahulu</div>
+                                <div class="small">Barang hanya bisa ditambahkan setelah pelanggan dipilih.</div>
+                            </div>
+                        </div>
                         <div class="stock-cart-add border rounded p-3 mb-3">
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-7">
                                     <label class="form-label small mb-0" for="item_select">Pilih Barang</label>
-                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select">
+                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select" disabled>
                                         <option value="">-- Pilih Barang --</option>
                                         @foreach ($items as $item)
                                             <option value="{{ $item->id }}"
                                                 data-code="{{ $item->code }}"
                                                 data-name="{{ $item->name }}"
                                                 data-stock="{{ $item->stock }}"
-                                                data-price="{{ $item->selling_price }}">
+                                                data-price="{{ $item->selling_price }}"
+                                                data-member-price="{{ $item->member_price ?? 0 }}">
                                                 {{ $item->code }} — {{ $item->name }} (Stok: {{ number_format($item->stock) }})
                                             </option>
                                         @endforeach
@@ -41,11 +93,11 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small mb-0" for="item_qty">Qty</label>
-                                    <input type="number" id="item_qty" class="form-control form-control-clean cart-add-control" min="1" placeholder="0">
+                                    <input type="number" id="item_qty" class="form-control form-control-clean cart-add-control" min="1" placeholder="0" disabled>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label small mb-0 cart-add-action-label" aria-hidden="true">Aksi</label>
-                                    <button type="button" class="btn btn-outline-primary w-100 cart-add-btn" id="btn-add-item">
+                                    <button type="button" class="btn btn-outline-primary w-100 cart-add-btn" id="btn-add-item" disabled>
                                         <i class="bi bi-cart-plus"></i>
                                     </button>
                                 </div>
@@ -130,36 +182,6 @@
                         <h2 class="data-panel-title"><i class="bi bi-receipt me-1"></i> Ringkasan</h2>
                     </div>
                     <div class="data-panel-body">
-                        <div class="mb-3">
-                            <label class="form-label">Pelanggan <span class="text-danger">*</span></label>
-                            <select id="customer_id" class="form-control-clean atha-searchable-select">
-                                <option value="">-- Pilih Pelanggan --</option>
-                                <option value="__umum__">{{ config('workshop.walk_in_customer_label', 'Umum') }} (pelanggan lewat)</option>
-                                <optgroup label="Pelanggan terdaftar">
-                                    @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->code }} — {{ $customer->name }}</option>
-                                    @endforeach
-                                </optgroup>
-                                <option value="__new__">+ Pelanggan baru...</option>
-                            </select>
-                            <div class="form-hint-sm">Pilih <strong>Umum</strong> untuk pembeli lewat tanpa simpan ke master data.</div>
-                        </div>
-                        <div id="new-customer-fields" class="border rounded p-3 mb-3 d-none customer-inline-panel">
-                            <div class="small fw-semibold mb-2"><i class="bi bi-person-plus me-1"></i> Data pelanggan baru</div>
-                            <div class="mb-2">
-                                <label class="form-label small mb-0" for="new_customer_name">Nama <span class="text-danger">*</span></label>
-                                <input type="text" id="new_customer_name" class="form-control form-control-clean" placeholder="Nama pelanggan" autocomplete="off">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small mb-0" for="new_customer_phone">Telepon</label>
-                                <input type="text" id="new_customer_phone" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label small mb-0" for="new_customer_address">Alamat</label>
-                                <input type="text" id="new_customer_address" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
-                            </div>
-                            <div class="form-hint-sm mt-2 mb-0">Otomatis tersimpan ke master pelanggan saat transaksi disimpan.</div>
-                        </div>
                         <div class="mb-3">
                             <label class="form-label">Teknisi <span id="tech-required" class="text-danger d-none">*</span></label>
                             <select name="technician_id" id="technician_id" class="form-control-clean atha-searchable-select">

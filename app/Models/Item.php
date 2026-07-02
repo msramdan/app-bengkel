@@ -48,6 +48,15 @@ class Item extends Model
         return $this->stock_opname > 0 && $this->stock <= $this->stock_opname;
     }
 
+    public function resolveSalePrice(bool $useMemberPrice): float
+    {
+        if ($useMemberPrice && (float) $this->member_price > 0) {
+            return (float) $this->member_price;
+        }
+
+        return (float) $this->selling_price;
+    }
+
     public function scopeLowStock(Builder $query): Builder
     {
         return $query

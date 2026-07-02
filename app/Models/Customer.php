@@ -9,10 +9,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Support\CodeGenerator;
 
-#[Fillable(['code', 'name', 'phone', 'email', 'address', 'notes'])]
+#[Fillable(['code', 'name', 'is_member', 'phone', 'email', 'address', 'notes'])]
 class Customer extends Model
 {
     use GeneratesDatedCode, HasFactory, SoftDeletes;
+
+    protected function casts(): array
+    {
+        return [
+            'is_member' => 'boolean',
+        ];
+    }
 
     protected static function codePrefix(): string
     {

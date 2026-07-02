@@ -246,8 +246,65 @@ class TransactionServiceTest extends TestCase
         ], $this->user->id);
 
         $this->assertSame($before + 1, Customer::count());
-        $this->assertDatabaseHas('customers', ['name' => 'Pelanggan Cepat', 'phone' => '08123456789']);
+        $this->assertDatabaseHas('customers', [
+            'name' => 'Pelanggan Cepat',
+            'phone' => '08123456789',
+            'is_member' => false,
+        ]);
         $this->assertNotNull($tx->customer_id);
         $this->assertSame('Pelanggan Cepat', $tx->customer_name);
+    }
+
+    #[Test]
+    public function member_customer_uses_member_price_for_items(): void
+    {
+        $this->item->update(['member_price' => 20000]);
+
+        $member = Customer::create([
+            'code' => 'PLG-MEMBER-01',
+            'name' => 'Member Customer',
+            'is_member' => true,
+        ]);
+
+        $tx = app(TransactionService::class)->create([
+            'customer_mode' => 'existing',
+            'customer_id' => $member->id,
+            'payment_method' => 'cash',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
+        ], $this->user->id);
+
+        $this->assertSame(40000.0, (float) $tx->subtotal_items);
+        $this->assertSame(20000.0, (float) $tx->items->first()->unit_price);
+    }
+
+    #[Test]
+    public function regular_customer_uses_selling_price_even_when_member_price_exists(): void
+    {
+        $this->item->update(['member_price' => 20000]);
+
+        $tx = app(TransactionService::class)->create([
+            'customer_mode' => 'existing',
+            'customer_id' => $this->customer->id,
+            'payment_method' => 'cash',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
+        ], $this->user->id);
+
+        $this->assertSame(50000.0, (float) $tx->subtotal_items);
+        $this->assertSame(25000.0, (float) $tx->items->first()->unit_price);
+    }
+
+    #[Test]
+    public function walk_in_customer_uses_selling_price_not_member_price(): void
+    {
+        $this->item->update(['member_price' => 20000]);
+
+        $tx = app(TransactionService::class)->create([
+            'customer_mode' => 'umum',
+            'payment_method' => 'cash',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ], $this->user->id);
+
+        $this->assertSame(25000.0, (float) $tx->subtotal_items);
+        $this->assertSame(25000.0, (float) $tx->items->first()->unit_price);
     }
 }
