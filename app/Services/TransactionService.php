@@ -11,6 +11,7 @@ use App\Models\TransactionServiceLine;
 use App\Models\WorkshopService;
 use App\Support\CodeGenerator;
 use App\Support\PaymentMethodResolver;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -37,6 +38,196 @@ class TransactionService
      */
     public function create(array $payload, int $userId): Transaction
     {
+        return DB::transaction(function () use ($payload, $userId) {
+            $prepared = $this->preparePayload($payload, true);
+            $payment = $this->paymentResolver->resolve(
+                $payload['payment_method'] ?? 'cash',
+                isset($payload['bank_account_id']) ? (int) $payload['bank_account_id'] : null,
+            );
+
+            $transactionNo = $this->nextTransactionNo($prepared['type']);
+
+            $transaction = Transaction::create([
+                ...$this->transactionAttributes($prepared, $userId, $transactionNo),
+                'status' => 'completed',
+                'payment_method' => $payment['payment_method'],
+                'bank_account_id' => $payment['bank_account_id'],
+            ]);
+
+            $this->deductStockForLines($prepared['resolved_items'], $userId, $transactionNo);
+            $this->persistLines($transaction, $prepared['resolved_items'], $prepared['resolved_services']);
+
+            return $transaction->load(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function hold(array $payload, int $userId): Transaction
+    {
+        return DB::transaction(function () use ($payload, $userId) {
+            $prepared = $this->preparePayload($payload, true, skipStockCheck: true);
+
+            $transactionNo = CodeGenerator::nextFromTable(CodeGenerator::PREFIX_HOLD, 'transactions', 'transaction_no');
+
+            $transaction = Transaction::create([
+                ...$this->transactionAttributes($prepared, $userId, $transactionNo),
+                'status' => 'held',
+                'held_at' => now(),
+                'payment_method' => null,
+                'bank_account_id' => null,
+            ]);
+
+            $this->persistLines($transaction, $prepared['resolved_items'], $prepared['resolved_services']);
+
+            return $transaction->load(['customer', 'technician', 'user', 'items', 'serviceLines']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function updateHeld(Transaction $transaction, array $payload, int $userId): Transaction
+    {
+        return DB::transaction(function () use ($transaction, $payload) {
+            $locked = Transaction::query()
+                ->whereKey($transaction->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked || ! $locked->isHeld()) {
+                throw new InvalidArgumentException('Open order tidak valid atau sudah diselesaikan.');
+            }
+
+            $prepared = $this->preparePayload($payload, true, skipStockCheck: true);
+
+            $locked->items()->delete();
+            $locked->serviceLines()->delete();
+
+            $locked->update([
+                ...$this->transactionAttributes($prepared, $locked->user_id, $locked->transaction_no, $locked),
+                'held_at' => $locked->held_at ?? now(),
+            ]);
+
+            $this->persistLines($locked, $prepared['resolved_items'], $prepared['resolved_services']);
+
+            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function completeHeld(Transaction $transaction, array $payload, int $userId): Transaction
+    {
+        return DB::transaction(function () use ($transaction, $payload, $userId) {
+            $locked = Transaction::query()
+                ->whereKey($transaction->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked || ! $locked->isHeld()) {
+                throw new InvalidArgumentException('Open order tidak valid atau sudah diselesaikan.');
+            }
+
+            $prepared = $this->preparePayload($payload, true, skipStockCheck: false);
+
+            $technician = null;
+            if (! empty($prepared['technician_id'])) {
+                $technician = Technician::query()->find($prepared['technician_id']);
+                if (! $technician || ! $technician->is_active) {
+                    throw new InvalidArgumentException('Teknisi tidak valid atau tidak aktif.');
+                }
+            }
+
+            $payment = $this->paymentResolver->resolve(
+                $payload['payment_method'] ?? 'cash',
+                isset($payload['bank_account_id']) ? (int) $payload['bank_account_id'] : null,
+            );
+
+            $this->deductStockForLines($prepared['resolved_items'], $userId, $locked->transaction_no);
+
+            $locked->items()->delete();
+            $locked->serviceLines()->delete();
+
+            $locked->update([
+                ...$this->transactionAttributes($prepared, $locked->user_id, $locked->transaction_no, $locked),
+                'status' => 'completed',
+                'held_at' => null,
+                'payment_method' => $payment['payment_method'],
+                'bank_account_id' => $payment['bank_account_id'],
+            ]);
+
+            $this->persistLines($locked, $prepared['resolved_items'], $prepared['resolved_services']);
+
+            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount']);
+        });
+    }
+
+    public function cancelHeld(Transaction $transaction, int $userId): Transaction
+    {
+        return DB::transaction(function () use ($transaction) {
+            $locked = Transaction::query()
+                ->whereKey($transaction->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked || ! $locked->isHeld()) {
+                throw new InvalidArgumentException('Open order tidak valid atau sudah diselesaikan.');
+            }
+
+            $locked->update([
+                'status' => 'cancelled',
+                'held_at' => null,
+            ]);
+
+            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines']);
+        });
+    }
+
+    public function expireStaleHeldOrders(): int
+    {
+        $hours = max(1, (int) config('workshop.held_order_expire_hours', 8));
+        $cutoff = now()->subHours($hours);
+
+        $staleOrders = Transaction::query()
+            ->where('status', 'held')
+            ->where(function ($query) use ($cutoff) {
+                $query->where('held_at', '<', $cutoff)
+                    ->orWhere(function ($inner) use ($cutoff) {
+                        $inner->whereNull('held_at')->where('created_at', '<', $cutoff);
+                    });
+            })
+            ->orderBy('id')
+            ->get();
+
+        $count = 0;
+
+        foreach ($staleOrders as $order) {
+            $this->cancelHeld($order, (int) $order->user_id);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{
+     *   type: string,
+     *   customer_data: array{customer_id: int|null, customer_name: string},
+     *   technician_id: int|null,
+     *   resolved_items: Collection,
+     *   resolved_services: Collection,
+     *   subtotal_items: float,
+     *   subtotal_services: float,
+     *   discount: float,
+     *   financials: array<string, float>
+     * }
+     */
+    private function preparePayload(array $payload, bool $requireTechnicianForServices, bool $skipStockCheck = false): array
+    {
         $itemLines = $payload['items'] ?? [];
         $serviceLines = $payload['services'] ?? [];
 
@@ -53,104 +244,123 @@ class TransactionService
             default => 'sale',
         };
 
-        if ($hasServices && empty($payload['technician_id'])) {
+        if ($requireTechnicianForServices && $hasServices && empty($payload['technician_id'])) {
             throw new InvalidArgumentException('Teknisi wajib dipilih untuk transaksi yang memiliki jasa servis.');
         }
 
-        return DB::transaction(function () use ($payload, $userId, $itemLines, $serviceLines, $type, $hasServices) {
-            $customerData = $this->resolveCustomer($payload);
-            $useMemberPricing = $this->customerQualifiesForMemberPricing($customerData, $payload);
+        $customerData = $this->resolveCustomer($payload);
+        $useMemberPricing = $this->customerQualifiesForMemberPricing($customerData, $payload);
 
-            $technician = null;
-            if (! empty($payload['technician_id'])) {
-                $technician = Technician::query()->find($payload['technician_id']);
-                if (! $technician || ! $technician->is_active) {
-                    throw new InvalidArgumentException('Teknisi tidak valid atau tidak aktif.');
-                }
+        $technician = null;
+        if (! empty($payload['technician_id'])) {
+            $technician = Technician::query()->find($payload['technician_id']);
+            if (! $technician || ! $technician->is_active) {
+                throw new InvalidArgumentException('Teknisi tidak valid atau tidak aktif.');
             }
+        }
 
-            $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing);
-            $resolvedServices = $this->resolveServiceLines($serviceLines);
+        $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing, $skipStockCheck);
+        $resolvedServices = $this->resolveServiceLines($serviceLines);
 
-            $subtotalItems = $resolvedItems->sum('subtotal');
-            $subtotalServices = $resolvedServices->sum('subtotal');
-            $discount = max(0, (float) ($payload['discount'] ?? 0));
-            $gross = (float) $subtotalItems + (float) $subtotalServices;
+        $subtotalItems = (float) $resolvedItems->sum('subtotal');
+        $subtotalServices = (float) $resolvedServices->sum('subtotal');
+        $discount = max(0, (float) ($payload['discount'] ?? 0));
+        $gross = $subtotalItems + $subtotalServices;
 
-            $financials = $this->commissionCalculator->calculate(
-                (float) $subtotalItems,
-                (float) $subtotalServices,
-                $discount,
-                $technician ? (float) $technician->commission_percent : null,
-            );
+        $financials = $this->commissionCalculator->calculate(
+            $subtotalItems,
+            $subtotalServices,
+            $discount,
+            $technician ? (float) $technician->commission_percent : null,
+        );
 
-            $payment = $this->paymentResolver->resolve(
-                $payload['payment_method'] ?? 'cash',
-                isset($payload['bank_account_id']) ? (int) $payload['bank_account_id'] : null,
-            );
-
-            $prefix = match ($type) {
-                'sale' => CodeGenerator::PREFIX_SALE,
-                'service' => CodeGenerator::PREFIX_SERVICE,
-                'combined' => CodeGenerator::PREFIX_COMBINED,
-            };
-
-            $transactionNo = CodeGenerator::nextFromTable($prefix, 'transactions', 'transaction_no');
-
-            $transaction = Transaction::create([
-                'transaction_no' => $transactionNo,
-                'type' => $type,
-                'customer_id' => $customerData['customer_id'],
-                'customer_name' => $customerData['customer_name'],
-                'technician_id' => $hasServices ? $payload['technician_id'] : null,
-                'user_id' => $userId,
-                'subtotal_items' => $subtotalItems,
-                'subtotal_services' => $subtotalServices,
-                'discount' => min($discount, $gross),
-                'total' => $financials['total'],
-                'technician_commission' => $financials['technician_commission'],
-                'owner_service_share' => $financials['owner_service_share'],
-                'owner_items_share' => $financials['owner_items_share'],
-                'owner_total_share' => $financials['owner_total_share'],
-                'status' => 'completed',
-                'notes' => $payload['notes'] ?? null,
-                'payment_method' => $payment['payment_method'],
-                'bank_account_id' => $payment['bank_account_id'],
-            ]);
-
-            if ($resolvedItems->isNotEmpty()) {
-                $stockLines = $resolvedItems->map(fn ($line) => [
-                    'item_id' => $line['item_id'],
-                    'quantity' => $line['quantity'],
-                ])->all();
-
-                $this->stockService->stockOutBatch(
-                    $stockLines,
-                    $userId,
-                    $transactionNo,
-                    'Stok keluar otomatis dari transaksi '.$transactionNo,
-                );
-            }
-
-            foreach ($resolvedItems as $line) {
-                TransactionItem::create([
-                    'transaction_id' => $transaction->id,
-                    ...$line,
-                ]);
-            }
-
-            foreach ($resolvedServices as $line) {
-                TransactionServiceLine::create([
-                    'transaction_id' => $transaction->id,
-                    ...$line,
-                ]);
-            }
-
-            return $transaction->load(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount']);
-        });
+        return [
+            'type' => $type,
+            'customer_data' => $customerData,
+            'technician_id' => $hasServices ? ($payload['technician_id'] ?? null) : null,
+            'resolved_items' => $resolvedItems,
+            'resolved_services' => $resolvedServices,
+            'subtotal_items' => $subtotalItems,
+            'subtotal_services' => $subtotalServices,
+            'discount' => min($discount, $gross),
+            'financials' => $financials,
+            'notes' => $payload['notes'] ?? null,
+        ];
     }
 
-    private function resolveItemLines(array $lines, bool $useMemberPricing = false): \Illuminate\Support\Collection
+    /**
+     * @param  array<string, mixed>  $prepared
+     * @return array<string, mixed>
+     */
+    private function transactionAttributes(array $prepared, int $userId, string $transactionNo, ?Transaction $existing = null): array
+    {
+        return [
+            'transaction_no' => $transactionNo,
+            'type' => $prepared['type'],
+            'customer_id' => $prepared['customer_data']['customer_id'],
+            'customer_name' => $prepared['customer_data']['customer_name'],
+            'technician_id' => $prepared['technician_id'] ?? $existing?->technician_id,
+            'user_id' => $existing?->user_id ?? $userId,
+            'subtotal_items' => $prepared['subtotal_items'],
+            'subtotal_services' => $prepared['subtotal_services'],
+            'discount' => $prepared['discount'],
+            'total' => $prepared['financials']['total'],
+            'technician_commission' => $prepared['financials']['technician_commission'],
+            'owner_service_share' => $prepared['financials']['owner_service_share'],
+            'owner_items_share' => $prepared['financials']['owner_items_share'],
+            'owner_total_share' => $prepared['financials']['owner_total_share'],
+            'notes' => $prepared['notes'] ?? $existing?->notes,
+        ];
+    }
+
+    private function nextTransactionNo(string $type): string
+    {
+        $prefix = match ($type) {
+            'sale' => CodeGenerator::PREFIX_SALE,
+            'service' => CodeGenerator::PREFIX_SERVICE,
+            'combined' => CodeGenerator::PREFIX_COMBINED,
+        };
+
+        return CodeGenerator::nextFromTable($prefix, 'transactions', 'transaction_no');
+    }
+
+    private function deductStockForLines(Collection $resolvedItems, int $userId, string $transactionNo): void
+    {
+        if ($resolvedItems->isEmpty()) {
+            return;
+        }
+
+        $stockLines = $resolvedItems->map(fn ($line) => [
+            'item_id' => $line['item_id'],
+            'quantity' => $line['quantity'],
+        ])->all();
+
+        $this->stockService->stockOutBatch(
+            $stockLines,
+            $userId,
+            $transactionNo,
+            'Stok keluar otomatis dari transaksi '.$transactionNo,
+        );
+    }
+
+    private function persistLines(Transaction $transaction, Collection $resolvedItems, Collection $resolvedServices): void
+    {
+        foreach ($resolvedItems as $line) {
+            TransactionItem::create([
+                'transaction_id' => $transaction->id,
+                ...$line,
+            ]);
+        }
+
+        foreach ($resolvedServices as $line) {
+            TransactionServiceLine::create([
+                'transaction_id' => $transaction->id,
+                ...$line,
+            ]);
+        }
+    }
+
+    private function resolveItemLines(array $lines, bool $useMemberPricing = false, bool $skipStockCheck = false): Collection
     {
         $merged = [];
 
@@ -180,11 +390,11 @@ class TransactionService
         $itemIds = array_keys($merged);
         sort($itemIds);
 
-        $items = Item::query()
+        $query = Item::query()
             ->whereIn('id', $itemIds)
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
+            ->orderBy('id');
+
+        $items = ($skipStockCheck ? $query->get() : $query->lockForUpdate()->get())
             ->keyBy('id');
 
         $resolved = collect();
@@ -202,7 +412,7 @@ class TransactionService
                 throw new InvalidArgumentException("Barang \"{$item->name}\" tidak aktif.");
             }
 
-            if ($item->stock < $qty) {
+            if (! $skipStockCheck && $item->stock < $qty) {
                 throw new InvalidArgumentException(
                     "Stok \"{$item->name}\" tidak mencukupi. Tersedia: {$item->stock}, dibutuhkan: {$qty}."
                 );
@@ -313,7 +523,7 @@ class TransactionService
         ];
     }
 
-    private function resolveServiceLines(array $lines): \Illuminate\Support\Collection
+    private function resolveServiceLines(array $lines): Collection
     {
         $merged = [];
 

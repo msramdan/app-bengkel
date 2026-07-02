@@ -1,6 +1,9 @@
 @php
     $sales = $report['sales'];
     $purchases = $report['purchases'];
+    $manualIncome = $report['manual_income'];
+    $manualExpense = $report['manual_expense'];
+    $totals = $report['totals'];
     $profit = $report['profit'];
     $rp = fn ($n) => 'Rp ' . number_format((float) $n, 0, ',', '.');
 @endphp
@@ -11,9 +14,9 @@
         <div class="dash-kpi dash-kpi-success">
             <div class="dash-kpi-icon"><i class="bi bi-cash-stack"></i></div>
             <div class="dash-kpi-body">
-                <div class="dash-kpi-label">Pemasukan Bersih</div>
+                <div class="dash-kpi-label">Pemasukan Penjualan</div>
                 <div class="dash-kpi-value text-success">{{ $rp($sales['revenue']) }}</div>
-                <div class="dash-kpi-meta">{{ $sales['transaction_count'] }} transaksi penjualan</div>
+                <div class="dash-kpi-meta">{{ $sales['transaction_count'] }} transaksi + manual {{ $rp($manualIncome['amount']) }}</div>
             </div>
         </div>
     </div>
@@ -21,9 +24,9 @@
         <div class="dash-kpi dash-kpi-warning">
             <div class="dash-kpi-icon"><i class="bi bi-cart-dash"></i></div>
             <div class="dash-kpi-body">
-                <div class="dash-kpi-label">Pengeluaran Pembelian</div>
-                <div class="dash-kpi-value text-warning">{{ $rp($purchases['expense']) }}</div>
-                <div class="dash-kpi-meta">{{ $purchases['purchase_count'] }} pembelian</div>
+                <div class="dash-kpi-label">Pengeluaran Operasional</div>
+                <div class="dash-kpi-value text-warning">{{ $rp($purchases['expense'] + $manualExpense['amount']) }}</div>
+                <div class="dash-kpi-meta">{{ $purchases['purchase_count'] }} pembelian + {{ $manualExpense['entry_count'] }} manual</div>
             </div>
         </div>
     </div>
@@ -127,6 +130,76 @@
     </div>
 </div>
 
+{{-- Pemasukan & pengeluaran manual --}}
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="data-panel h-100">
+            <div class="data-panel-head">
+                <div class="data-panel-icon"><i class="bi bi-plus-circle"></i></div>
+                <div>
+                    <h3 class="data-panel-title">Pemasukan Manual</h3>
+                    <p class="data-panel-desc">Di luar transaksi penjualan — total {{ $rp($manualIncome['amount']) }}</p>
+                </div>
+            </div>
+            <div class="data-panel-body">
+                <table class="table table-sm table-hover align-middle fr-data-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Kategori</th>
+                            <th class="text-center">Jumlah</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($manualIncome['by_category'] as $row)
+                            <tr>
+                                <td>{{ $row['category_name'] }}</td>
+                                <td class="text-center">{{ $row['entry_count'] }}</td>
+                                <td class="text-end text-success">{{ $rp($row['amount_total']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="text-center text-muted py-3">Belum ada pemasukan manual.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="data-panel h-100">
+            <div class="data-panel-head">
+                <div class="data-panel-icon"><i class="bi bi-dash-circle"></i></div>
+                <div>
+                    <h3 class="data-panel-title">Pengeluaran Manual</h3>
+                    <p class="data-panel-desc">Operasional — total {{ $rp($manualExpense['amount']) }}</p>
+                </div>
+            </div>
+            <div class="data-panel-body">
+                <table class="table table-sm table-hover align-middle fr-data-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Kategori</th>
+                            <th class="text-center">Jumlah</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($manualExpense['by_category'] as $row)
+                            <tr>
+                                <td>{{ $row['category_name'] }}</td>
+                                <td class="text-center">{{ $row['entry_count'] }}</td>
+                                <td class="text-end text-warning">{{ $rp($row['amount_total']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="text-center text-muted py-3">Belum ada pengeluaran manual.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Komisi per teknisi --}}
 <div class="data-panel mb-4">
     <div class="data-panel-head">
@@ -181,8 +254,8 @@
     <div class="data-panel-head">
         <div class="data-panel-icon"><i class="bi bi-arrow-down-circle"></i></div>
         <div>
-            <h3 class="data-panel-title">Sumber Dana — Pemasukan (Penjualan)</h3>
-            <p class="data-panel-desc">Pembagian pembayaran dari pelanggan per metode bayar</p>
+            <h3 class="data-panel-title">Sumber Dana — Pemasukan (Penjualan + Manual)</h3>
+            <p class="data-panel-desc">Pembagian pembayaran masuk per metode bayar</p>
         </div>
     </div>
     <div class="data-panel-body">
@@ -240,8 +313,8 @@
     <div class="data-panel-head">
         <div class="data-panel-icon"><i class="bi bi-arrow-up-circle"></i></div>
         <div>
-            <h3 class="data-panel-title">Sumber Dana — Pengeluaran (Pembelian)</h3>
-            <p class="data-panel-desc">Pembagian pembayaran ke supplier per metode bayar</p>
+            <h3 class="data-panel-title">Sumber Dana — Pengeluaran (Pembelian + Manual)</h3>
+            <p class="data-panel-desc">Pembagian pembayaran keluar per metode bayar</p>
         </div>
     </div>
     <div class="data-panel-body">
@@ -301,14 +374,14 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <div class="fr-cash-tile fr-cash-tile-in">
-                    <div class="fr-cash-tile-label">Pemasukan dari pelanggan</div>
-                    <div class="fr-cash-tile-value text-success">{{ $rp($sales['revenue']) }}</div>
+                    <div class="fr-cash-tile-label">Total pemasukan</div>
+                    <div class="fr-cash-tile-value text-success">{{ $rp($totals['inflow']) }}</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="fr-cash-tile fr-cash-tile-out">
-                    <div class="fr-cash-tile-label">Pengeluaran + komisi</div>
-                    <div class="fr-cash-tile-value text-danger">− {{ $rp($purchases['expense'] + $sales['technician_commission']) }}</div>
+                    <div class="fr-cash-tile-label">Total pengeluaran + komisi</div>
+                    <div class="fr-cash-tile-value text-danger">− {{ $rp($totals['operating_outflow']) }}</div>
                 </div>
             </div>
             <div class="col-md-4">

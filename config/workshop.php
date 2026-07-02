@@ -27,4 +27,7 @@ return [
         'cash' => 'Cash',
         'transfer' => 'Transfer Bank',
     ],
+
+    /** Open order draft — dibersihkan otomatis setelah N jam tanpa checkout. */
+    'held_order_expire_hours' => (int) env('HELD_ORDER_EXPIRE_HOURS', 8),
 ];

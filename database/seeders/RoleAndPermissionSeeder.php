@@ -29,6 +29,8 @@ class RoleAndPermissionSeeder extends Seeder
             'transaction view', 'transaction create',
             'purchase view', 'purchase create',
             'financial report view',
+            'manual income view', 'manual income create', 'manual income cancel',
+            'manual expense view', 'manual expense create', 'manual expense cancel',
             'bank account view', 'bank account create', 'bank account edit', 'bank account delete',
             'settings view', 'settings edit',
         ];
@@ -53,6 +55,8 @@ class RoleAndPermissionSeeder extends Seeder
             'transaction view', 'transaction create',
             'purchase view', 'purchase create',
             'financial report view',
+            'manual income view', 'manual income create', 'manual income cancel',
+            'manual expense view', 'manual expense create', 'manual expense cancel',
         ]);
 
         $teknisi = Role::firstOrCreate(['name' => 'Teknisi']);

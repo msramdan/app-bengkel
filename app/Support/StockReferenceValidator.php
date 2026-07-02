@@ -8,7 +8,7 @@ class StockReferenceValidator
 {
     /** Prefixes reserved for system-generated document numbers. */
     private const RESERVED_PREFIXES = [
-        'PBL-', 'JBL-', 'SRV-', 'TRX-', 'STM-', 'STK-',
+        'PBL-', 'JBL-', 'SRV-', 'TRX-', 'HLD-', 'STM-', 'STK-',
     ];
 
     public static function assertManualReference(?string $referenceNo): void

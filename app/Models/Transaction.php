@@ -11,13 +11,32 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'transaction_no', 'type', 'customer_id', 'customer_name', 'technician_id', 'user_id',
     'subtotal_items', 'subtotal_services', 'discount', 'total',
     'technician_commission', 'owner_service_share', 'owner_items_share', 'owner_total_share',
-    'status', 'notes', 'payment_method', 'bank_account_id',
+    'status', 'held_at', 'notes', 'payment_method', 'bank_account_id',
 ])]
 class Transaction extends Model
 {
+    public function isHeld(): bool
+    {
+        return $this->status === 'held';
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
     public function displayCustomerName(): string
     {
         return $this->customer?->name ?? $this->customer_name ?? '-';
+    }
+
+    public function displayPaymentLabel(): string
+    {
+        if ($this->isHeld() || empty($this->payment_method)) {
+            return 'Belum bayar';
+        }
+
+        return \App\Support\PaymentMethodResolver::label($this->payment_method);
     }
     public function bankAccount(): BelongsTo
     {
@@ -52,6 +71,7 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
+            'held_at' => 'datetime',
             'subtotal_items' => 'decimal:2',
             'subtotal_services' => 'decimal:2',
             'discount' => 'decimal:2',

@@ -62,6 +62,14 @@ return [
         'access' => ['financial report view'],
     ],
     [
+        'group' => 'Pemasukan Manual',
+        'access' => ['manual income view', 'manual income create', 'manual income cancel'],
+    ],
+    [
+        'group' => 'Pengeluaran Manual',
+        'access' => ['manual expense view', 'manual expense create', 'manual expense cancel'],
+    ],
+    [
         'group' => 'Akun Bank',
         'access' => ['bank account view', 'bank account create', 'bank account edit', 'bank account delete'],
     ],

@@ -8,6 +8,8 @@ use App\Http\Controllers\ItemCategoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ItemImportExportController;
 use App\Http\Controllers\ItemUnitController;
+use App\Http\Controllers\ManualExpenseController;
+use App\Http\Controllers\ManualIncomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
@@ -60,6 +62,12 @@ Route::middleware(['auth'])->group(function () {
 
     // Fase 2 — Transaksi & komisi teknisi
     Route::resource('workshop-services', WorkshopServiceController::class)->except(['create', 'edit']);
+    Route::get('transactions/held/list', [TransactionController::class, 'heldList'])->name('transactions.held.list');
+    Route::get('transactions/items/availability', [TransactionController::class, 'itemAvailability'])->name('transactions.items.availability');
+    Route::post('transactions/hold', [TransactionController::class, 'hold'])->name('transactions.hold');
+    Route::put('transactions/{transaction}/hold', [TransactionController::class, 'updateHold'])->name('transactions.hold.update');
+    Route::post('transactions/{transaction}/complete', [TransactionController::class, 'completeHeld'])->name('transactions.complete');
+    Route::delete('transactions/{transaction}/hold', [TransactionController::class, 'cancelHeld'])->name('transactions.hold.cancel');
     Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
     Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
 
@@ -67,6 +75,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
     Route::get('financial-reports/export-pdf', [FinancialReportController::class, 'exportPdf'])->name('financial-reports.export-pdf');
+
+    Route::get('manual-incomes', [ManualIncomeController::class, 'index'])->name('manual-incomes.index');
+    Route::post('manual-incomes', [ManualIncomeController::class, 'store'])->name('manual-incomes.store');
+    Route::get('manual-incomes/{manualIncome}', [ManualIncomeController::class, 'show'])->name('manual-incomes.show');
+    Route::delete('manual-incomes/{manualIncome}', [ManualIncomeController::class, 'destroy'])->name('manual-incomes.destroy');
+
+    Route::get('manual-expenses', [ManualExpenseController::class, 'index'])->name('manual-expenses.index');
+    Route::post('manual-expenses', [ManualExpenseController::class, 'store'])->name('manual-expenses.store');
+    Route::get('manual-expenses/{manualExpense}', [ManualExpenseController::class, 'show'])->name('manual-expenses.show');
+    Route::delete('manual-expenses/{manualExpense}', [ManualExpenseController::class, 'destroy'])->name('manual-expenses.destroy');
 
     Route::resource('bank-accounts', BankAccountController::class)->except(['create', 'edit']);
 

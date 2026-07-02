@@ -22,8 +22,10 @@ class TransactionController extends Controller
 
     public function __construct(private TransactionService $transactionService)
     {
-        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice']);
-        $this->middleware('permission:transaction create')->only(['create', 'store']);
+        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice', 'heldList', 'itemAvailability']);
+        $this->middleware('permission:transaction create')->only([
+            'create', 'store', 'hold', 'updateHold', 'completeHeld', 'cancelHeld',
+        ]);
     }
 
     public function index(): View|JsonResponse
@@ -41,6 +43,11 @@ class TransactionController extends Controller
                     'combined' => '<span class="badge bg-warning-subtle text-warning">Gabungan</span>',
                     default => e($t->type),
                 })
+                ->addColumn('status_label', fn (Transaction $t) => match ($t->status) {
+                    'held' => '<span class="badge bg-warning-subtle text-warning">Open Order</span>',
+                    'cancelled' => '<span class="badge bg-danger-subtle text-danger">Batal</span>',
+                    default => '<span class="badge bg-success-subtle text-success">Selesai</span>',
+                })
                 ->addColumn('customer_name', fn (Transaction $t) => e($t->displayCustomerName()))
                 ->addColumn('technician_name', fn (Transaction $t) => e($t->technician?->name ?? '-'))
                 ->addColumn('total_fmt', fn (Transaction $t) => 'Rp '.number_format((float) $t->total, 0, ',', '.'))
@@ -51,7 +58,7 @@ class TransactionController extends Controller
                 ->addColumn('user_name', fn (Transaction $t) => e($t->user?->name ?? '-'))
                 ->addColumn('created_at', fn (Transaction $t) => $t->created_at?->format('d/m/Y H:i'))
                 ->addColumn('action', 'transactions.include.action')
-                ->rawColumns(['action', 'type_label', 'payment_label'])
+                ->rawColumns(['action', 'type_label', 'status_label', 'payment_label'])
                 ->toJson();
         }
 
@@ -65,7 +72,6 @@ class TransactionController extends Controller
             'technicians' => Technician::query()->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name', 'commission_percent']),
             'items' => Item::query()
                 ->where('is_active', true)
-                ->where('stock', '>', 0)
                 ->orderBy('name')
                 ->get(['id', 'code', 'name', 'stock', 'selling_price', 'member_price']),
             'services' => WorkshopService::query()
@@ -80,27 +86,7 @@ class TransactionController extends Controller
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $validated = $request->validate([
-            'customer_mode' => ['required', 'in:existing,umum,new'],
-            'customer_id' => ['nullable', 'required_if:customer_mode,existing', 'exists:customers,id'],
-            'new_customer' => ['nullable', 'required_if:customer_mode,new', 'array'],
-            'new_customer.name' => ['required_if:customer_mode,new', 'string', 'max:255'],
-            'new_customer.phone' => ['nullable', 'string', 'max:30'],
-            'new_customer.address' => ['nullable', 'string', 'max:500'],
-            'technician_id' => ['nullable', 'required_with:services', 'exists:technicians,id'],
-            'discount' => ['nullable', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-            'items' => ['nullable', 'array'],
-            'items.*.item_id' => ['required_with:items', 'exists:items,id'],
-            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
-            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
-            'services' => ['nullable', 'array'],
-            'services.*.workshop_service_id' => ['required_with:services', 'exists:workshop_services,id'],
-            'services.*.quantity' => ['required_with:services', 'integer', 'min:1'],
-            'services.*.unit_price' => ['nullable', 'numeric', 'min:0'],
-            'payment_method' => ['required', 'in:cash,qris,transfer'],
-            'bank_account_id' => ['nullable', 'required_if:payment_method,transfer', 'exists:bank_accounts,id'],
-        ]);
+        $validated = $this->validateTransactionPayload($request, requirePayment: true);
 
         try {
             $transaction = $this->transactionService->create($validated, (int) auth()->id());
@@ -120,6 +106,119 @@ class TransactionController extends Controller
             ->with('success', 'Transaksi '.$transaction->transaction_no.' berhasil disimpan.');
     }
 
+    public function hold(Request $request): JsonResponse
+    {
+        $validated = $this->validateTransactionPayload($request, requirePayment: false);
+
+        try {
+            $transaction = $this->transactionService->hold($validated, (int) auth()->id());
+        } catch (InvalidArgumentException $e) {
+            return $this->modalError($e->getMessage());
+        }
+
+        return $this->modalSuccess(
+            'Open order berhasil disimpan.',
+            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
+        );
+    }
+
+    public function updateHold(Request $request, Transaction $transaction): JsonResponse
+    {
+        $validated = $this->validateTransactionPayload($request, requirePayment: false);
+
+        try {
+            $transaction = $this->transactionService->updateHeld($transaction, $validated, (int) auth()->id());
+        } catch (InvalidArgumentException $e) {
+            return $this->modalError($e->getMessage());
+        }
+
+        return $this->modalSuccess(
+            'Open order berhasil diperbarui.',
+            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
+        );
+    }
+
+    public function completeHeld(Request $request, Transaction $transaction): JsonResponse
+    {
+        $validated = $this->validateTransactionPayload($request, requirePayment: true);
+
+        try {
+            $transaction = $this->transactionService->completeHeld($transaction, $validated, (int) auth()->id());
+        } catch (InvalidArgumentException $e) {
+            return $this->modalError($e->getMessage());
+        }
+
+        return $this->modalSuccess(
+            'Transaksi berhasil diselesaikan.',
+            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
+        );
+    }
+
+    public function cancelHeld(Transaction $transaction): JsonResponse
+    {
+        try {
+            $transaction = $this->transactionService->cancelHeld($transaction, (int) auth()->id());
+        } catch (InvalidArgumentException $e) {
+            return $this->modalError($e->getMessage());
+        }
+
+        return $this->modalSuccess(
+            'Open order dibatalkan.',
+            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
+        );
+    }
+
+    public function heldList(): JsonResponse
+    {
+        $orders = Transaction::query()
+            ->with(['customer:id,name', 'items', 'serviceLines'])
+            ->where('status', 'held')
+            ->latest('held_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (Transaction $t) => [
+                'id' => $t->id,
+                'transaction_no' => $t->transaction_no,
+                'customer_name' => $t->displayCustomerName(),
+                'customer_id' => $t->customer_id,
+                'total' => (float) $t->total,
+                'item_count' => $t->items->sum('quantity'),
+                'service_count' => $t->serviceLines->sum('quantity'),
+                'held_at' => $t->held_at?->toIso8601String(),
+                'created_at' => $t->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json(['data' => $orders]);
+    }
+
+    public function itemAvailability(Request $request): JsonResponse
+    {
+        $ids = collect(explode(',', (string) $request->query('ids', '')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
+        $items = Item::query()
+            ->whereIn('id', $ids)
+            ->where('is_active', true)
+            ->get(['id', 'code', 'name', 'stock', 'selling_price', 'member_price'])
+            ->map(fn (Item $item) => [
+                'id' => $item->id,
+                'code' => $item->code,
+                'name' => $item->name,
+                'stock' => (int) $item->stock,
+                'selling_price' => (float) $item->selling_price,
+                'member_price' => (float) $item->member_price,
+            ]);
+
+        return response()->json(['data' => $items]);
+    }
+
     public function show(Transaction $transaction): JsonResponse
     {
         $transaction->load([
@@ -136,6 +235,8 @@ class TransactionController extends Controller
 
     public function invoice(Transaction $transaction): View
     {
+        abort_unless($transaction->isCompleted(), 404);
+
         $transaction->load([
             'customer',
             'technician',
@@ -148,8 +249,42 @@ class TransactionController extends Controller
         return view('transactions.invoice', compact('transaction'));
     }
 
+    private function validateTransactionPayload(Request $request, bool $requirePayment): array
+    {
+        $rules = [
+            'customer_mode' => ['required', 'in:existing,umum,new'],
+            'customer_id' => ['nullable', 'required_if:customer_mode,existing', 'exists:customers,id'],
+            'new_customer' => ['nullable', 'required_if:customer_mode,new', 'array'],
+            'new_customer.name' => ['required_if:customer_mode,new', 'string', 'max:255'],
+            'new_customer.phone' => ['nullable', 'string', 'max:30'],
+            'new_customer.address' => ['nullable', 'string', 'max:500'],
+            'technician_id' => ['nullable', 'required_with:services', 'exists:technicians,id'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
+            'items' => ['nullable', 'array'],
+            'items.*.item_id' => ['required_with:items', 'exists:items,id'],
+            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'services' => ['nullable', 'array'],
+            'services.*.workshop_service_id' => ['required_with:services', 'exists:workshop_services,id'],
+            'services.*.quantity' => ['required_with:services', 'integer', 'min:1'],
+            'services.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+        ];
+
+        if ($requirePayment) {
+            $rules['payment_method'] = ['required', 'in:cash,qris,transfer'];
+            $rules['bank_account_id'] = ['nullable', 'required_if:payment_method,transfer', 'exists:bank_accounts,id'];
+        }
+
+        return $request->validate($rules);
+    }
+
     private function paymentBadge(Transaction $t): string
     {
+        if ($t->isHeld() || empty($t->payment_method)) {
+            return '<span class="badge bg-warning-subtle text-warning">Belum bayar</span>';
+        }
+
         $label = \App\Support\PaymentMethodResolver::label($t->payment_method);
 
         if ($t->payment_method === 'transfer' && $t->bankAccount) {

@@ -12,6 +12,13 @@
         init: function (options) {
             const settings = $.extend({
                 storeUrl: '',
+                holdUrl: '',
+                holdUpdateUrlTemplate: '',
+                completeUrlTemplate: '',
+                cancelUrlTemplate: '',
+                heldListUrl: '',
+                itemAvailabilityUrl: '',
+                showUrlTemplate: '',
                 redirectUrl: '',
                 techPercent: 20,
                 ownerPercent: 80,
@@ -19,6 +26,12 @@
                 items: [],
                 services: [],
             }, options);
+
+            let heldTransactionId = null;
+            let heldTransactionNo = null;
+            let orderTabs = [];
+            let activeTabId = null;
+            let tabCounter = 1;
 
             function resolveTechPercent() {
                 const $selected = $('#technician_id').find('option:selected');
@@ -109,6 +122,7 @@
                 const locked = !hasCustomerSelected();
 
                 $('#items-section-lock').toggleClass('d-none', !locked);
+                $('#items-add-form').toggleClass('d-none', locked);
                 $('#item_select, #item_qty, #btn-add-item').prop('disabled', locked);
             }
 
@@ -153,6 +167,7 @@
             const $itemsEmpty = $('#items-cart-empty');
             const $servicesEmpty = $('#services-cart-empty');
             const $submit = $('#btn-submit');
+            const $tabsList = $('#tx-order-tabs-list');
 
             function findItem(id) {
                 return settings.items.find(function (i) { return String(i.id) === String(id); });
@@ -165,6 +180,421 @@
             function getItemStock(itemId) {
                 const item = findItem(itemId);
                 return item ? parseInt(item.stock, 10) : 0;
+            }
+
+            function updateItemStockCache(items) {
+                (items || []).forEach(function (row) {
+                    const idx = settings.items.findIndex(function (i) { return String(i.id) === String(row.id); });
+                    if (idx >= 0) {
+                        settings.items[idx].stock = row.stock;
+                        settings.items[idx].selling_price = row.selling_price;
+                        settings.items[idx].member_price = row.member_price;
+                    } else {
+                        settings.items.push(row);
+                    }
+                });
+            }
+
+            function refreshItemStock() {
+                if (!settings.itemAvailabilityUrl) {
+                    return $.Deferred().resolve().promise();
+                }
+
+                const ids = settings.items.map(function (i) { return i.id; }).join(',');
+                if (!ids) {
+                    return $.Deferred().resolve().promise();
+                }
+
+                return $.get(settings.itemAvailabilityUrl, { ids: ids }).then(function (res) {
+                    updateItemStockCache(res.data || []);
+                });
+            }
+
+            function cloneCartLines(lines) {
+                return lines.map(function (line) {
+                    return $.extend({}, line);
+                });
+            }
+
+            function createEmptyTab(customLabel) {
+                const number = tabCounter++;
+                return {
+                    id: 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+                    label: customLabel || ('Transaksi ' + number),
+                    items: [],
+                    services: [],
+                    customerId: '',
+                    newCustomer: { name: '', phone: '', address: '' },
+                    discount: '0',
+                    notes: '',
+                    technicianId: '',
+                    paymentMethod: $('#payment_method').val() || 'cash',
+                    bankAccountId: '',
+                    heldTransactionId: null,
+                    heldTransactionNo: null,
+                };
+            }
+
+            function getActiveTab() {
+                return orderTabs.find(function (tab) { return tab.id === activeTabId; }) || null;
+            }
+
+            function deriveTabLabelFromForm() {
+                const mode = getCustomerMode();
+                if (mode === 'existing') {
+                    const text = $('#customer_id option:selected').text().trim();
+                    if (text && text !== '-- Pilih Pelanggan --') {
+                        const parts = text.split('—');
+                        return (parts.length > 1 ? parts[parts.length - 1] : text).trim();
+                    }
+                }
+                if (mode === 'umum') {
+                    return 'Umum';
+                }
+                if (mode === 'new') {
+                    const name = $('#new_customer_name').val().trim();
+                    if (name) {
+                        return name;
+                    }
+                    return 'Pelanggan Baru';
+                }
+                const tab = getActiveTab();
+                return tab ? tab.label : ('Transaksi ' + tabCounter);
+            }
+
+            function saveActiveTabState() {
+                const tab = getActiveTab();
+                if (!tab) {
+                    return;
+                }
+
+                tab.items = cloneCartLines(itemCart);
+                tab.services = cloneCartLines(serviceCart);
+                tab.customerId = $('#customer_id').val() || '';
+                tab.newCustomer = {
+                    name: $('#new_customer_name').val().trim(),
+                    phone: $('#new_customer_phone').val().trim(),
+                    address: $('#new_customer_address').val().trim(),
+                };
+                tab.discount = $('#discount').val() || '0';
+                tab.notes = $('#notes').val() || '';
+                tab.technicianId = $('#technician_id').val() || '';
+                tab.paymentMethod = $('#payment_method').val() || 'cash';
+                tab.bankAccountId = $('#bank_account_id').val() || '';
+                tab.heldTransactionId = heldTransactionId;
+                tab.heldTransactionNo = heldTransactionNo;
+
+                if (hasCustomerSelected() || itemCart.length || serviceCart.length) {
+                    tab.label = deriveTabLabelFromForm();
+                }
+            }
+
+            function resetFormFields() {
+                itemCart.length = 0;
+                serviceCart.length = 0;
+                heldTransactionId = null;
+                heldTransactionNo = null;
+                $('#discount').val('0');
+                $('#notes').val('');
+                $('#technician_id').val('').trigger('change');
+                $('#customer_id').val('').trigger('change');
+                $('#new_customer_name, #new_customer_phone, #new_customer_address').val('');
+                $('#payment_method').val('cash').trigger('change');
+                $('#bank_account_id').val('').trigger('change');
+            }
+
+            function loadTabState(tab) {
+                resetFormFields();
+
+                heldTransactionId = tab.heldTransactionId || null;
+                heldTransactionNo = tab.heldTransactionNo || null;
+
+                tab.items.forEach(function (line) {
+                    itemCart.push($.extend({}, line));
+                });
+                tab.services.forEach(function (line) {
+                    serviceCart.push($.extend({}, line));
+                });
+
+                if (tab.customerId) {
+                    $('#customer_id').val(tab.customerId).trigger('change');
+                }
+                $('#new_customer_name').val(tab.newCustomer.name || '');
+                $('#new_customer_phone').val(tab.newCustomer.phone || '');
+                $('#new_customer_address').val(tab.newCustomer.address || '');
+                $('#discount').val(tab.discount || '0');
+                $('#notes').val(tab.notes || '');
+                if (tab.technicianId) {
+                    $('#technician_id').val(tab.technicianId).trigger('change');
+                }
+                if (tab.paymentMethod) {
+                    $('#payment_method').val(tab.paymentMethod).trigger('change');
+                }
+                if (tab.bankAccountId) {
+                    $('#bank_account_id').val(tab.bankAccountId).trigger('change');
+                }
+
+                toggleNewCustomerFields();
+                updateCustomerRemark();
+                toggleItemsSectionLock();
+                renderItemCart();
+                renderServiceCart();
+                updateItemHint();
+            }
+
+            function renderTabBar() {
+                const $addBtn = $('#btn-add-tab');
+                $tabsList.children('.tx-order-tab').remove();
+
+                orderTabs.forEach(function (tab) {
+                    const isActive = tab.id === activeTabId;
+                    const closeBtn = orderTabs.length > 1
+                        ? `<button type="button" class="tx-order-tab-close" data-tab-id="${tab.id}" title="Tutup tab"><i class="bi bi-x"></i></button>`
+                        : '';
+
+                    $addBtn.before(`
+                        <div class="tx-order-tab ${isActive ? 'active' : ''}" data-tab-id="${tab.id}" title="${tab.label}">
+                            <span class="tx-order-tab-label">${tab.label}</span>
+                            ${closeBtn}
+                        </div>
+                    `);
+                });
+            }
+
+            function switchToTab(tabId) {
+                if (tabId === activeTabId) {
+                    return;
+                }
+
+                saveActiveTabState();
+
+                const tab = orderTabs.find(function (t) { return t.id === tabId; });
+                if (!tab) {
+                    return;
+                }
+
+                activeTabId = tabId;
+                loadTabState(tab);
+                renderTabBar();
+                updateSummary();
+            }
+
+            function addNewTab() {
+                saveActiveTabState();
+                const tab = createEmptyTab();
+                orderTabs.push(tab);
+                activeTabId = tab.id;
+                loadTabState(tab);
+                renderTabBar();
+                updateSummary();
+            }
+
+            function closeTab(tabId) {
+                if (orderTabs.length <= 1) {
+                    return;
+                }
+
+                const index = orderTabs.findIndex(function (t) { return t.id === tabId; });
+                if (index < 0) {
+                    return;
+                }
+
+                const tab = orderTabs[index];
+                const hasContent = tab.items.length || tab.services.length || tab.customerId || tab.newCustomer.name;
+
+                function removeTab() {
+                    if (tab.heldTransactionId && settings.cancelUrlTemplate) {
+                        $.ajax({
+                            url: settings.cancelUrlTemplate.replace('__ID__', tab.heldTransactionId),
+                            type: 'DELETE',
+                            data: { _token: $('meta[name="csrf-token"]').attr('content') },
+                            headers: { Accept: 'application/json' },
+                        });
+                    }
+
+                    orderTabs.splice(index, 1);
+
+                    if (activeTabId === tabId) {
+                        const next = orderTabs[Math.max(0, index - 1)];
+                        activeTabId = next.id;
+                        loadTabState(next);
+                    }
+
+                    renderTabBar();
+                    updateSummary();
+                }
+
+                if (!hasContent) {
+                    removeTab();
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Tutup tab transaksi?',
+                    text: 'Data di tab ini akan dihapus.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, tutup',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        removeTab();
+                    }
+                });
+            }
+
+            function removeActiveTabAfterSuccess() {
+                const index = orderTabs.findIndex(function (t) { return t.id === activeTabId; });
+                if (index >= 0) {
+                    orderTabs.splice(index, 1);
+                }
+
+                if (!orderTabs.length) {
+                    const tab = createEmptyTab();
+                    orderTabs.push(tab);
+                    activeTabId = tab.id;
+                } else {
+                    const next = orderTabs[Math.min(index, orderTabs.length - 1)];
+                    activeTabId = next.id;
+                    loadTabState(next);
+                }
+
+                renderTabBar();
+                updateSummary();
+            }
+
+            function clearCartState() {
+                resetFormFields();
+                toggleNewCustomerFields();
+                updateCustomerRemark();
+                toggleItemsSectionLock();
+                renderItemCart();
+                renderServiceCart();
+            }
+
+            function buildPayload() {
+                const customerMode = getCustomerMode();
+                const payload = {
+                    _token: $('meta[name="csrf-token"]').attr('content'),
+                    customer_mode: customerMode,
+                    technician_id: $('#technician_id').val() || null,
+                    discount: $('#discount').val() || 0,
+                    notes: $('#notes').val(),
+                    items: itemCart.map(function (l) {
+                        return { item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price };
+                    }),
+                    services: serviceCart.map(function (l) {
+                        return { workshop_service_id: l.workshop_service_id, quantity: l.quantity, unit_price: l.unit_price };
+                    }),
+                };
+
+                if (customerMode === 'existing') {
+                    payload.customer_id = $('#customer_id').val();
+                } else if (customerMode === 'new') {
+                    payload.new_customer = {
+                        name: $('#new_customer_name').val().trim(),
+                        phone: $('#new_customer_phone').val().trim() || null,
+                        address: $('#new_customer_address').val().trim() || null,
+                    };
+                }
+
+                return payload;
+            }
+
+            function validateBeforeSave(requirePayment) {
+                if (!itemCart.length && !serviceCart.length) {
+                    Swal.fire({ icon: 'warning', title: 'Tambahkan minimal satu barang atau jasa.' });
+                    return false;
+                }
+
+                if (!validateServiceCartQty()) {
+                    return false;
+                }
+
+                if (serviceCart.length && !$('#technician_id').val()) {
+                    Swal.fire({ icon: 'warning', title: 'Pilih teknisi untuk transaksi servis.' });
+                    return false;
+                }
+
+                const customerMode = getCustomerMode();
+                if (!customerMode) {
+                    Swal.fire({ icon: 'warning', title: 'Pilih pelanggan terlebih dahulu.' });
+                    return false;
+                }
+
+                if (customerMode === 'new' && !$('#new_customer_name').val().trim()) {
+                    Swal.fire({ icon: 'warning', title: 'Nama pelanggan baru wajib diisi.' });
+                    return false;
+                }
+
+                if (requirePayment && $('#payment_method').val() === 'transfer' && !$('#bank_account_id').val()) {
+                    Swal.fire({ icon: 'warning', title: 'Pilih akun bank untuk transfer.' });
+                    return false;
+                }
+
+                return true;
+            }
+
+            function loadTabFromServer(id) {
+                $.get(settings.showUrlTemplate.replace('__ID__', id), function (res) {
+                    const d = res.data;
+                    if (d.status !== 'held') {
+                        Swal.fire({ icon: 'warning', title: 'Open order tidak ditemukan atau sudah diselesaikan.' });
+                        return;
+                    }
+
+                    saveActiveTabState();
+
+                    const tab = createEmptyTab(d.customer_name || d.transaction_no);
+                    tab.heldTransactionId = d.id;
+                    tab.heldTransactionNo = d.transaction_no;
+                    tab.customerId = d.customer_id ? String(d.customer_id) : '__umum__';
+                    tab.discount = String(d.discount || 0);
+                    tab.notes = d.notes || '';
+                    tab.technicianId = d.technician_id ? String(d.technician_id) : '';
+
+                    (d.items || []).forEach(function (line) {
+                        tab.items.push({
+                            item_id: line.item_id,
+                            code: line.item_code,
+                            name: line.item_name,
+                            quantity: parseInt(line.quantity, 10),
+                            unit_price: parseFloat(line.unit_price),
+                            subtotal: parseFloat(line.subtotal),
+                        });
+                    });
+
+                    (d.service_lines || []).forEach(function (line) {
+                        tab.services.push({
+                            workshop_service_id: line.workshop_service_id,
+                            code: line.service_code,
+                            name: line.service_name,
+                            quantity: parseInt(line.quantity, 10),
+                            unit_price: parseFloat(line.unit_price),
+                            subtotal: parseFloat(line.subtotal),
+                        });
+                    });
+
+                    const active = getActiveTab();
+                    const activeIsEmpty = active
+                        && !active.items.length
+                        && !active.services.length
+                        && !active.customerId
+                        && !active.newCustomer.name;
+
+                    if (activeIsEmpty) {
+                        orderTabs = orderTabs.filter(function (t) { return t.id !== active.id; });
+                    }
+
+                    orderTabs.push(tab);
+                    activeTabId = tab.id;
+                    loadTabState(tab);
+                    renderTabBar();
+
+                    refreshItemStock().always(updateSummary);
+                }).fail(function () {
+                    Swal.fire({ icon: 'error', title: 'Gagal memuat open order.' });
+                });
             }
 
             function recalcLine(line) {
@@ -281,6 +711,17 @@
                 $submit.prop('disabled', !(hasLines && hasCustomer && (!needsTech || hasTech) && paymentOk));
             }
 
+            function updateActiveTabLabel() {
+                const tab = getActiveTab();
+                if (!tab) {
+                    return;
+                }
+                if (hasCustomerSelected() || itemCart.length || serviceCart.length) {
+                    tab.label = deriveTabLabelFromForm();
+                    renderTabBar();
+                }
+            }
+
             $('#customer_id').on('change', function () {
                 toggleNewCustomerFields();
                 updateCustomerRemark();
@@ -288,12 +729,14 @@
                 toggleItemsSectionLock();
                 updateItemHint();
                 renderItemCart();
+                updateActiveTabLabel();
                 updateSummary();
             });
 
             $('#new_customer_name, #new_customer_phone, #new_customer_address').on('input', function () {
                 updateCustomerRemark();
                 toggleItemsSectionLock();
+                updateActiveTabLabel();
                 updateSummary();
             });
 
@@ -322,11 +765,6 @@
 
                 const existing = itemCart.find(function (l) { return String(l.item_id) === String(itemId); });
                 const newQty = (existing ? existing.quantity : 0) + qty;
-
-                if (newQty > item.stock) {
-                    Swal.fire({ icon: 'error', title: 'Stok tidak mencukupi.', text: 'Tersedia: ' + Number(item.stock).toLocaleString('id-ID') });
-                    return;
-                }
 
                 const unitPrice = getDefaultItemPrice(item);
                 if (existing) {
@@ -434,16 +872,12 @@
 
                 if (cart === itemCart) {
                     const stock = getItemStock(line.item_id);
-                    if (qty > stock) {
-                        if (showError) {
-                            $input.val(line.quantity);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Stok tidak mencukupi.',
-                                text: line.name + ' — tersedia: ' + stock.toLocaleString('id-ID'),
-                            });
-                        }
-                        return false;
+                    if (qty > stock && showError) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Perkiraan stok terbatas',
+                            text: line.name + ' — stok saat ini: ' + stock.toLocaleString('id-ID') + '. Validasi final saat submit.',
+                        });
                     }
                 }
 
@@ -526,92 +960,84 @@
             $('#transaction-form').on('submit', function (e) {
                 e.preventDefault();
 
-                if (!itemCart.length && !serviceCart.length) {
-                    Swal.fire({ icon: 'warning', title: 'Tambahkan minimal satu barang atau jasa.' });
-                    return;
-                }
+                saveActiveTabState();
 
-                if (!validateItemCartStock() || !validateServiceCartQty()) {
-                    return;
-                }
-
-                if (serviceCart.length && !$('#technician_id').val()) {
-                    Swal.fire({ icon: 'warning', title: 'Pilih teknisi untuk transaksi servis.' });
-                    return;
-                }
-
-                const customerMode = getCustomerMode();
-                if (!customerMode) {
-                    Swal.fire({ icon: 'warning', title: 'Pilih pelanggan terlebih dahulu.' });
-                    return;
-                }
-
-                if (customerMode === 'new' && !$('#new_customer_name').val().trim()) {
-                    Swal.fire({ icon: 'warning', title: 'Nama pelanggan baru wajib diisi.' });
-                    return;
-                }
-
-                if ($('#payment_method').val() === 'transfer' && !$('#bank_account_id').val()) {
-                    Swal.fire({ icon: 'warning', title: 'Pilih akun bank untuk transfer.' });
+                if (!validateBeforeSave(true)) {
                     return;
                 }
 
                 $submit.prop('disabled', true);
 
-                const payload = {
-                    _token: $('meta[name="csrf-token"]').attr('content'),
-                    customer_mode: customerMode,
-                    technician_id: $('#technician_id').val() || null,
-                    discount: $('#discount').val() || 0,
-                    notes: $('#notes').val(),
-                    payment_method: $('#payment_method').val(),
-                    bank_account_id: $('#bank_account_id').val() || null,
-                    items: itemCart.map(function (l) {
-                        return { item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price };
-                    }),
-                    services: serviceCart.map(function (l) {
-                        return { workshop_service_id: l.workshop_service_id, quantity: l.quantity, unit_price: l.unit_price };
-                    }),
-                };
+                const payload = buildPayload();
+                payload.payment_method = $('#payment_method').val();
+                payload.bank_account_id = $('#bank_account_id').val() || null;
 
-                if (customerMode === 'existing') {
-                    payload.customer_id = $('#customer_id').val();
-                } else if (customerMode === 'new') {
-                    payload.new_customer = {
-                        name: $('#new_customer_name').val().trim(),
-                        phone: $('#new_customer_phone').val().trim() || null,
-                        address: $('#new_customer_address').val().trim() || null,
-                    };
+                const url = heldTransactionId
+                    ? settings.completeUrlTemplate.replace('__ID__', heldTransactionId)
+                    : settings.storeUrl;
+
+                function handleSubmitSuccess(res) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: res.message,
+                        text: res.data?.transaction_no || '',
+                        timer: 1800,
+                        showConfirmButton: false,
+                    });
+                    refreshItemStock().always(function () {
+                        removeActiveTabAfterSuccess();
+                        $submit.prop('disabled', false);
+                    });
+                }
+
+                function handleSubmitError(xhr) {
+                    const message = xhr.responseJSON?.message || 'Gagal menyimpan transaksi.';
+                    Swal.fire({ icon: 'error', title: 'Transaksi gagal', text: message });
+                    $submit.prop('disabled', false);
+                    refreshItemStock().always(updateSummary);
                 }
 
                 $.ajax({
-                    url: settings.storeUrl,
+                    url: url,
                     type: 'POST',
                     headers: { Accept: 'application/json' },
                     data: payload,
-                    success: function (res) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: res.message,
-                            text: res.data?.transaction_no || '',
-                            timer: 2000,
-                            showConfirmButton: false,
-                        }).then(function () {
-                            window.location.href = settings.redirectUrl;
-                        });
-                    },
-                    error: function (xhr) {
-                        Swal.fire({ icon: 'error', title: xhr.responseJSON?.message || 'Gagal menyimpan transaksi.' });
-                        $submit.prop('disabled', false);
-                        updateSummary();
-                    },
+                    success: handleSubmitSuccess,
+                    error: handleSubmitError,
                 });
             });
+
+            $('#btn-add-tab').on('click', addNewTab);
+
+            $tabsList.on('click', '.tx-order-tab', function (e) {
+                if ($(e.target).closest('.tx-order-tab-close').length) {
+                    return;
+                }
+                switchToTab($(this).data('tab-id'));
+            });
+
+            $tabsList.on('click', '.tx-order-tab-close', function (e) {
+                e.stopPropagation();
+                closeTab($(this).data('tab-id'));
+            });
+
+            const firstTab = createEmptyTab('Transaksi 1');
+            orderTabs.push(firstTab);
+            activeTabId = firstTab.id;
+            renderTabBar();
+            loadTabState(firstTab);
 
             updateSummary();
             toggleNewCustomerFields();
             updateCustomerRemark();
             toggleItemsSectionLock();
+            refreshItemStock();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const heldFromUrl = urlParams.get('held');
+            if (heldFromUrl) {
+                loadTabFromServer(heldFromUrl);
+            }
         },
     };
 })(jQuery);

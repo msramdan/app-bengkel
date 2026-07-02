@@ -1,6 +1,9 @@
 @php
     $sales = $report['sales'];
     $purchases = $report['purchases'];
+    $manualIncome = $report['manual_income'];
+    $manualExpense = $report['manual_expense'];
+    $totals = $report['totals'];
     $profit = $report['profit'];
     $rp = fn ($n) => 'Rp ' . number_format((float) $n, 0, ',', '.');
 @endphp
@@ -9,14 +12,14 @@
     <table class="fr-summary-table" width="100%" cellspacing="0" cellpadding="0">
         <tr>
             <td class="fr-stat-card">
-                <div class="fr-stat-label">Pemasukan Bersih</div>
+                <div class="fr-stat-label">Pemasukan Penjualan</div>
                 <div class="fr-stat-value fr-text-success">{{ $rp($sales['revenue']) }}</div>
-                <div class="fr-stat-meta">{{ $sales['transaction_count'] }} transaksi penjualan</div>
+                <div class="fr-stat-meta">{{ $sales['transaction_count'] }} transaksi + manual {{ $rp($manualIncome['amount']) }}</div>
             </td>
             <td class="fr-stat-card">
-                <div class="fr-stat-label">Pengeluaran Pembelian</div>
-                <div class="fr-stat-value fr-text-warning">{{ $rp($purchases['expense']) }}</div>
-                <div class="fr-stat-meta">{{ $purchases['purchase_count'] }} pembelian</div>
+                <div class="fr-stat-label">Pengeluaran Operasional</div>
+                <div class="fr-stat-value fr-text-warning">{{ $rp($purchases['expense'] + $manualExpense['amount']) }}</div>
+                <div class="fr-stat-meta">{{ $purchases['purchase_count'] }} pembelian + {{ $manualExpense['entry_count'] }} manual</div>
             </td>
             <td class="fr-stat-card">
                 <div class="fr-stat-label">Komisi Teknisi</div>
@@ -26,7 +29,7 @@
             <td class="fr-stat-card">
                 <div class="fr-stat-label">Estimasi Laba Owner</div>
                 <div class="fr-stat-value">{{ $rp($profit['owner_net_estimate']) }}</div>
-                <div class="fr-stat-meta">Bagian owner − pembelian</div>
+                <div class="fr-stat-meta">Pemasukan − pengeluaran − komisi</div>
             </td>
         </tr>
     </table>
@@ -61,6 +64,62 @@
                     </tbody>
                 </table>
                 <p class="fr-hint">Sparepart 100% untuk toko. Komisi dihitung dari total jasa, bukan dari harga barang.</p>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<table class="fr-split" width="100%" cellspacing="0" cellpadding="0">
+    <tr>
+        <td class="fr-panel" width="50%" valign="top">
+            <div class="fr-panel-head">Pemasukan Manual ({{ $rp($manualIncome['amount']) }})</div>
+            <div class="fr-panel-body">
+                <table class="fr-table" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Kategori</th>
+                            <th class="text-center">Jumlah</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($manualIncome['by_category'] as $row)
+                            <tr>
+                                <td>{{ $row['category_name'] }}</td>
+                                <td class="text-center">{{ $row['entry_count'] }}</td>
+                                <td class="text-end fr-text-success">{{ $rp($row['amount_total']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="text-center fr-muted">Belum ada pemasukan manual.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </td>
+        <td width="12"></td>
+        <td class="fr-panel" width="50%" valign="top">
+            <div class="fr-panel-head">Pengeluaran Manual ({{ $rp($manualExpense['amount']) }})</div>
+            <div class="fr-panel-body">
+                <table class="fr-table" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Kategori</th>
+                            <th class="text-center">Jumlah</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($manualExpense['by_category'] as $row)
+                            <tr>
+                                <td>{{ $row['category_name'] }}</td>
+                                <td class="text-center">{{ $row['entry_count'] }}</td>
+                                <td class="text-end fr-text-warning">{{ $rp($row['amount_total']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="text-center fr-muted">Belum ada pengeluaran manual.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </td>
     </tr>
@@ -104,7 +163,7 @@
 
 @php $inflows = $report['payment_sources']['inflows']; @endphp
 <div class="fr-panel fr-panel-block">
-    <div class="fr-panel-head">Sumber Dana — Pemasukan (Penjualan)</div>
+    <div class="fr-panel-head">Sumber Dana — Pemasukan (Penjualan + Manual)</div>
     <div class="fr-panel-body">
         <table class="fr-source-grid" width="100%" cellspacing="0" cellpadding="0">
             <tr>
@@ -153,7 +212,7 @@
 
 @php $outflows = $report['payment_sources']['outflows']; @endphp
 <div class="fr-panel fr-panel-block">
-    <div class="fr-panel-head">Sumber Dana — Pengeluaran (Pembelian)</div>
+    <div class="fr-panel-head">Sumber Dana — Pengeluaran (Pembelian + Manual)</div>
     <div class="fr-panel-body">
         <table class="fr-source-grid" width="100%" cellspacing="0" cellpadding="0">
             <tr>
@@ -201,13 +260,13 @@
         <table class="fr-source-grid" width="100%" cellspacing="0" cellpadding="0">
             <tr>
                 <td class="fr-source-box">
-                    <div class="fr-source-label">Pemasukan dari pelanggan</div>
-                    <div class="fr-source-value fr-text-success">{{ $rp($sales['revenue']) }}</div>
+                    <div class="fr-source-label">Total pemasukan</div>
+                    <div class="fr-source-value fr-text-success">{{ $rp($totals['inflow']) }}</div>
                 </td>
                 <td width="8"></td>
                 <td class="fr-source-box">
-                    <div class="fr-source-label">Pengeluaran + komisi</div>
-                    <div class="fr-source-value fr-text-danger">- {{ $rp($purchases['expense'] + $sales['technician_commission']) }}</div>
+                    <div class="fr-source-label">Total pengeluaran + komisi</div>
+                    <div class="fr-source-value fr-text-danger">- {{ $rp($totals['operating_outflow']) }}</div>
                 </td>
                 <td width="8"></td>
                 <td class="fr-source-box fr-source-box-highlight">

@@ -15,7 +15,17 @@
 
     <form id="transaction-form">
         @csrf
-        <div class="row g-4">
+        <div class="tx-order-tabs mb-3" id="tx-order-tabs">
+            <div class="tx-order-tabs-scroll">
+                <div class="tx-order-tabs-list" id="tx-order-tabs-list">
+                    <button type="button" class="tx-order-tab-add" id="btn-add-tab" title="Transaksi baru">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-hint-sm mt-2 mb-0">Pindah tab untuk layani pelanggan lain. Stok dicek saat bayar/submit.</div>
+        </div>
+        <div class="row g-4 align-items-lg-start">
             <div class="col-lg-8">
                 <div class="data-panel mb-4" id="customer-panel">
                     <div class="data-panel-head">
@@ -24,7 +34,7 @@
                     <div class="data-panel-body">
                         <div class="mb-3">
                             <label class="form-label">Pilih Pelanggan <span class="text-danger">*</span></label>
-                            <select id="customer_id" class="form-control-clean atha-searchable-select">
+                            <select id="customer_id" class="form-control-clean atha-searchable-select atha-select2-customer">
                                 <option value="">-- Pilih Pelanggan --</option>
                                 <option value="__umum__" data-is-member="0">{{ config('workshop.walk_in_customer_label', 'Umum') }} (pelanggan lewat)</option>
                                 <optgroup label="Pelanggan terdaftar">
@@ -65,15 +75,13 @@
                     <div class="data-panel-head">
                         <h2 class="data-panel-title"><i class="bi bi-box-seam me-1"></i> Barang / Sparepart</h2>
                     </div>
-                    <div class="data-panel-body position-relative">
-                        <div id="items-section-lock" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-75 rounded z-1">
-                            <div class="text-center text-muted px-3">
-                                <i class="bi bi-person-check fs-4 d-block mb-2"></i>
-                                <div class="fw-medium">Pilih pelanggan terlebih dahulu</div>
-                                <div class="small">Barang hanya bisa ditambahkan setelah pelanggan dipilih.</div>
-                            </div>
+                    <div class="data-panel-body">
+                        <div id="items-section-lock" class="items-section-empty text-center text-muted py-4 px-3">
+                            <i class="bi bi-person-check fs-4 d-block mb-2"></i>
+                            <div class="fw-medium">Pilih pelanggan terlebih dahulu</div>
+                            <div class="small">Barang hanya bisa ditambahkan setelah pelanggan dipilih.</div>
                         </div>
-                        <div class="stock-cart-add border rounded p-3 mb-3">
+                        <div id="items-add-form" class="stock-cart-add border rounded p-3 mb-3 d-none">
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-7">
                                     <label class="form-label small mb-0" for="item_select">Pilih Barang</label>
@@ -177,7 +185,7 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="data-panel sticky-top" style="top: 1rem;">
+                <div class="data-panel tx-summary-sticky">
                     <div class="data-panel-head">
                         <h2 class="data-panel-title"><i class="bi bi-receipt me-1"></i> Ringkasan</h2>
                     </div>
@@ -223,7 +231,7 @@
                             <span id="sum-total">Rp 0</span>
                         </div>
 
-                        <div class="alert alert-light border py-2 px-3 small mb-3">
+                        <div class="alert alert-light border py-2 px-3 small mb-3 atha-summary-box">
                             <div class="fw-semibold mb-1"><i class="bi bi-percent me-1"></i> Pembagian (sesuai % komisi teknisi)</div>
                             <div class="d-flex justify-content-between">
                                 <span>Komisi teknisi (<span id="label-tech-percent">{{ (int) config('workshop.default_technician_commission_percent', 20) }}</span>% jasa)</span>
@@ -246,9 +254,9 @@
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg" id="btn-submit" disabled>
-                                <i class="bi bi-check-lg"></i> Simpan Transaksi
+                                <i class="bi bi-check-lg"></i> Bayar & Selesai
                             </button>
-                            <a href="{{ route('transactions.index') }}" class="btn btn-light">Batal</a>
+                            <a href="{{ route('transactions.index') }}" class="btn btn-light-action">Kembali</a>
                         </div>
                     </div>
                 </div>
@@ -264,6 +272,13 @@
         AthaPaymentFields.init();
         AthaTransactionCart.init({
             storeUrl: '{{ route('transactions.store') }}',
+            holdUrl: '{{ route('transactions.hold') }}',
+            holdUpdateUrlTemplate: '{{ route('transactions.hold.update', '__ID__') }}',
+            completeUrlTemplate: '{{ route('transactions.complete', '__ID__') }}',
+            cancelUrlTemplate: '{{ route('transactions.hold.cancel', '__ID__') }}',
+            heldListUrl: '{{ route('transactions.held.list') }}',
+            itemAvailabilityUrl: '{{ route('transactions.items.availability') }}',
+            showUrlTemplate: '{{ route('transactions.show', '__ID__') }}',
             redirectUrl: '{{ route('transactions.index') }}',
             techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
             ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},

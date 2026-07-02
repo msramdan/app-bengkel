@@ -29,6 +29,7 @@
                             <th>No</th>
                             <th>No. Transaksi</th>
                             <th>Jenis</th>
+                            <th>Status</th>
                             <th>Pelanggan</th>
                             <th>Teknisi</th>
                             <th>Total</th>
@@ -46,17 +47,20 @@
 
     <div class="modal fade" data-bs-backdrop="static" id="show-modal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-            <div class="modal-content modal-content-clean">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detail Transaksi</h5>
+            <div class="modal-content tx-detail-modal">
+                <div class="modal-header tx-detail-modal__header">
+                    <div>
+                        <p class="tx-detail-modal__eyebrow mb-0">Detail Transaksi</p>
+                        <h5 class="modal-title tx-detail-modal__title mb-0" id="tx-detail-modal-title">—</h5>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body"></div>
-                <div class="modal-footer">
+                <div class="modal-body tx-detail-modal__body"></div>
+                <div class="modal-footer tx-detail-modal__footer">
                     <a href="#" id="btn-print-invoice" class="btn btn-primary d-none" target="_blank">
                         <i class="bi bi-printer"></i> Cetak Invoice
                     </a>
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-light-action" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -74,11 +78,12 @@
             processing: true,
             serverSide: true,
             ajax: '{{ route('transactions.index') }}',
-            order: [[9, 'desc']],
+            order: [[10, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'transaction_no', name: 'transaction_no' },
                 { data: 'type_label', name: 'type', orderable: false },
+                { data: 'status_label', name: 'status', orderable: false, searchable: false },
                 { data: 'customer_name', name: 'customer.name', orderable: false },
                 { data: 'technician_name', name: 'technician.name', orderable: false },
                 { data: 'total_fmt', name: 'total', orderable: false, searchable: false },
@@ -97,6 +102,35 @@
             invoiceUrl: '{{ route('transactions.invoice', '__ID__') }}',
             techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
             ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},
+        });
+
+        $('#data-table').on('click', '[data-action="cancel-held"]', function () {
+            const id = $(this).data('id');
+            Swal.fire({
+                title: 'Batalkan open order?',
+                text: 'Draft order akan dihapus dari daftar.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, batalkan',
+                cancelButtonText: 'Tidak',
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                $.ajax({
+                    url: '{{ route('transactions.hold.cancel', '__ID__') }}'.replace('__ID__', id),
+                    type: 'DELETE',
+                    data: { _token: '{{ csrf_token() }}' },
+                    headers: { Accept: 'application/json' },
+                    success: function (res) {
+                        Swal.fire({ icon: 'success', title: res.message, timer: 1500, showConfirmButton: false });
+                        $('#data-table').DataTable().ajax.reload(null, false);
+                    },
+                    error: function (xhr) {
+                        Swal.fire({ icon: 'error', title: xhr.responseJSON?.message || 'Gagal membatalkan open order.' });
+                    },
+                });
+            });
         });
     </script>
 @endpush

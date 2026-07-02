@@ -102,10 +102,26 @@ return [
                     ],
                 ],
                 [
-                    'label' => 'Laporan Keuangan',
-                    'icon' => 'bi-graph-up-arrow',
-                    'route' => 'financial-reports.index',
-                    'permission' => 'financial report view',
+                    'label' => 'Keuangan',
+                    'icon' => 'bi-wallet2',
+                    'permissions' => ['financial report view', 'manual income view', 'manual expense view'],
+                    'submenus' => [
+                        [
+                            'label' => 'Laporan Keuangan',
+                            'route' => 'financial-reports.index',
+                            'permission' => 'financial report view',
+                        ],
+                        [
+                            'label' => 'Pemasukan Manual',
+                            'route' => 'manual-incomes.index',
+                            'permission' => 'manual income view',
+                        ],
+                        [
+                            'label' => 'Pengeluaran Manual',
+                            'route' => 'manual-expenses.index',
+                            'permission' => 'manual expense view',
+                        ],
+                    ],
                 ],
                 [
                     'label' => 'Akun Bank',
