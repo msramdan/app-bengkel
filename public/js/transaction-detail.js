@@ -31,9 +31,6 @@
     }
 
     function statusBadge(status) {
-        if (status === 'held') {
-            return '<span class="tx-detail-badge tx-detail-badge--held">Open Order</span>';
-        }
         if (status === 'cancelled') {
             return '<span class="tx-detail-badge tx-detail-badge--cancelled">Batal</span>';
         }

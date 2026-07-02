@@ -63,157 +63,6 @@ class TransactionService
 
     /**
      * @param  array<string, mixed>  $payload
-     */
-    public function hold(array $payload, int $userId): Transaction
-    {
-        return DB::transaction(function () use ($payload, $userId) {
-            $prepared = $this->preparePayload($payload, true, skipStockCheck: true);
-
-            $transactionNo = CodeGenerator::nextFromTable(CodeGenerator::PREFIX_HOLD, 'transactions', 'transaction_no');
-
-            $transaction = Transaction::create([
-                ...$this->transactionAttributes($prepared, $userId, $transactionNo),
-                'status' => 'held',
-                'held_at' => now(),
-                'payment_method' => null,
-                'bank_account_id' => null,
-            ]);
-
-            $this->persistLines($transaction, $prepared['resolved_items'], $prepared['resolved_services']);
-
-            return $transaction->load(['customer', 'technician', 'user', 'items', 'serviceLines']);
-        });
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    public function updateHeld(Transaction $transaction, array $payload, int $userId): Transaction
-    {
-        return DB::transaction(function () use ($transaction, $payload) {
-            $locked = Transaction::query()
-                ->whereKey($transaction->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $locked || ! $locked->isHeld()) {
-                throw new InvalidArgumentException('Open order tidak valid atau sudah diselesaikan.');
-            }
-
-            $prepared = $this->preparePayload($payload, true, skipStockCheck: true);
-
-            $locked->items()->delete();
-            $locked->serviceLines()->delete();
-
-            $locked->update([
-                ...$this->transactionAttributes($prepared, $locked->user_id, $locked->transaction_no, $locked),
-                'held_at' => $locked->held_at ?? now(),
-            ]);
-
-            $this->persistLines($locked, $prepared['resolved_items'], $prepared['resolved_services']);
-
-            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines']);
-        });
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    public function completeHeld(Transaction $transaction, array $payload, int $userId): Transaction
-    {
-        return DB::transaction(function () use ($transaction, $payload, $userId) {
-            $locked = Transaction::query()
-                ->whereKey($transaction->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $locked || ! $locked->isHeld()) {
-                throw new InvalidArgumentException('Open order tidak valid atau sudah diselesaikan.');
-            }
-
-            $prepared = $this->preparePayload($payload, true, skipStockCheck: false);
-
-            $technician = null;
-            if (! empty($prepared['technician_id'])) {
-                $technician = Technician::query()->find($prepared['technician_id']);
-                if (! $technician || ! $technician->is_active) {
-                    throw new InvalidArgumentException('Teknisi tidak valid atau tidak aktif.');
-                }
-            }
-
-            $payment = $this->paymentResolver->resolve(
-                $payload['payment_method'] ?? 'cash',
-                isset($payload['bank_account_id']) ? (int) $payload['bank_account_id'] : null,
-            );
-
-            $this->deductStockForLines($prepared['resolved_items'], $userId, $locked->transaction_no);
-
-            $locked->items()->delete();
-            $locked->serviceLines()->delete();
-
-            $locked->update([
-                ...$this->transactionAttributes($prepared, $locked->user_id, $locked->transaction_no, $locked),
-                'status' => 'completed',
-                'held_at' => null,
-                'payment_method' => $payment['payment_method'],
-                'bank_account_id' => $payment['bank_account_id'],
-            ]);
-
-            $this->persistLines($locked, $prepared['resolved_items'], $prepared['resolved_services']);
-
-            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount']);
-        });
-    }
-
-    public function cancelHeld(Transaction $transaction, int $userId): Transaction
-    {
-        return DB::transaction(function () use ($transaction) {
-            $locked = Transaction::query()
-                ->whereKey($transaction->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $locked || ! $locked->isHeld()) {
-                throw new InvalidArgumentException('Open order tidak valid atau sudah diselesaikan.');
-            }
-
-            $locked->update([
-                'status' => 'cancelled',
-                'held_at' => null,
-            ]);
-
-            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines']);
-        });
-    }
-
-    public function expireStaleHeldOrders(): int
-    {
-        $hours = max(1, (int) config('workshop.held_order_expire_hours', 8));
-        $cutoff = now()->subHours($hours);
-
-        $staleOrders = Transaction::query()
-            ->where('status', 'held')
-            ->where(function ($query) use ($cutoff) {
-                $query->where('held_at', '<', $cutoff)
-                    ->orWhere(function ($inner) use ($cutoff) {
-                        $inner->whereNull('held_at')->where('created_at', '<', $cutoff);
-                    });
-            })
-            ->orderBy('id')
-            ->get();
-
-        $count = 0;
-
-        foreach ($staleOrders as $order) {
-            $this->cancelHeld($order, (int) $order->user_id);
-            $count++;
-        }
-
-        return $count;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
      * @return array{
      *   type: string,
      *   customer_data: array{customer_id: int|null, customer_name: string},
@@ -226,7 +75,7 @@ class TransactionService
      *   financials: array<string, float>
      * }
      */
-    private function preparePayload(array $payload, bool $requireTechnicianForServices, bool $skipStockCheck = false): array
+    private function preparePayload(array $payload, bool $requireTechnicianForServices): array
     {
         $itemLines = $payload['items'] ?? [];
         $serviceLines = $payload['services'] ?? [];
@@ -259,7 +108,7 @@ class TransactionService
             }
         }
 
-        $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing, $skipStockCheck);
+        $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing);
         $resolvedServices = $this->resolveServiceLines($serviceLines);
 
         $subtotalItems = (float) $resolvedItems->sum('subtotal');
@@ -360,7 +209,7 @@ class TransactionService
         }
     }
 
-    private function resolveItemLines(array $lines, bool $useMemberPricing = false, bool $skipStockCheck = false): Collection
+    private function resolveItemLines(array $lines, bool $useMemberPricing = false): Collection
     {
         $merged = [];
 
@@ -394,7 +243,7 @@ class TransactionService
             ->whereIn('id', $itemIds)
             ->orderBy('id');
 
-        $items = ($skipStockCheck ? $query->get() : $query->lockForUpdate()->get())
+        $items = $query->lockForUpdate()->get()
             ->keyBy('id');
 
         $resolved = collect();
@@ -412,7 +261,7 @@ class TransactionService
                 throw new InvalidArgumentException("Barang \"{$item->name}\" tidak aktif.");
             }
 
-            if (! $skipStockCheck && $item->stock < $qty) {
+            if ($item->stock < $qty) {
                 throw new InvalidArgumentException(
                     "Stok \"{$item->name}\" tidak mencukupi. Tersedia: {$item->stock}, dibutuhkan: {$qty}."
                 );

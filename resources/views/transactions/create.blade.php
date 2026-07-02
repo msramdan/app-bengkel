@@ -272,11 +272,6 @@
         AthaPaymentFields.init();
         AthaTransactionCart.init({
             storeUrl: '{{ route('transactions.store') }}',
-            holdUrl: '{{ route('transactions.hold') }}',
-            holdUpdateUrlTemplate: '{{ route('transactions.hold.update', '__ID__') }}',
-            completeUrlTemplate: '{{ route('transactions.complete', '__ID__') }}',
-            cancelUrlTemplate: '{{ route('transactions.hold.cancel', '__ID__') }}',
-            heldListUrl: '{{ route('transactions.held.list') }}',
             itemAvailabilityUrl: '{{ route('transactions.items.availability') }}',
             showUrlTemplate: '{{ route('transactions.show', '__ID__') }}',
             redirectUrl: '{{ route('transactions.index') }}',

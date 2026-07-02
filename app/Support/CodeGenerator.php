@@ -30,9 +30,6 @@ class CodeGenerator
   /** Fase 3 — pembelian barang / pengeluaran */
   public const PREFIX_PURCHASE = 'PBL';
 
-  /** Open order / draft transaksi */
-  public const PREFIX_HOLD = 'HLD';
-
   /** Pemasukan kas manual */
   public const PREFIX_MANUAL_INCOME = 'MIN';
 

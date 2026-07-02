@@ -13,7 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('reminders:oil-change')->dailyAt('08:00');
-        $schedule->command('transactions:expire-held')->hourly();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

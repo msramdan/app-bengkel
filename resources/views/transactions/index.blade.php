@@ -103,34 +103,5 @@
             techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
             ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},
         });
-
-        $('#data-table').on('click', '[data-action="cancel-held"]', function () {
-            const id = $(this).data('id');
-            Swal.fire({
-                title: 'Batalkan open order?',
-                text: 'Draft order akan dihapus dari daftar.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, batalkan',
-                cancelButtonText: 'Tidak',
-            }).then(function (result) {
-                if (!result.isConfirmed) {
-                    return;
-                }
-                $.ajax({
-                    url: '{{ route('transactions.hold.cancel', '__ID__') }}'.replace('__ID__', id),
-                    type: 'DELETE',
-                    data: { _token: '{{ csrf_token() }}' },
-                    headers: { Accept: 'application/json' },
-                    success: function (res) {
-                        Swal.fire({ icon: 'success', title: res.message, timer: 1500, showConfirmButton: false });
-                        $('#data-table').DataTable().ajax.reload(null, false);
-                    },
-                    error: function (xhr) {
-                        Swal.fire({ icon: 'error', title: xhr.responseJSON?.message || 'Gagal membatalkan open order.' });
-                    },
-                });
-            });
-        });
     </script>
 @endpush

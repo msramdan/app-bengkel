@@ -62,12 +62,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Fase 2 — Transaksi & komisi teknisi
     Route::resource('workshop-services', WorkshopServiceController::class)->except(['create', 'edit']);
-    Route::get('transactions/held/list', [TransactionController::class, 'heldList'])->name('transactions.held.list');
     Route::get('transactions/items/availability', [TransactionController::class, 'itemAvailability'])->name('transactions.items.availability');
-    Route::post('transactions/hold', [TransactionController::class, 'hold'])->name('transactions.hold');
-    Route::put('transactions/{transaction}/hold', [TransactionController::class, 'updateHold'])->name('transactions.hold.update');
-    Route::post('transactions/{transaction}/complete', [TransactionController::class, 'completeHeld'])->name('transactions.complete');
-    Route::delete('transactions/{transaction}/hold', [TransactionController::class, 'cancelHeld'])->name('transactions.hold.cancel');
     Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
     Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
 

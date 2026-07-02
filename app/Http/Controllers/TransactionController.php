@@ -22,10 +22,8 @@ class TransactionController extends Controller
 
     public function __construct(private TransactionService $transactionService)
     {
-        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice', 'heldList', 'itemAvailability']);
-        $this->middleware('permission:transaction create')->only([
-            'create', 'store', 'hold', 'updateHold', 'completeHeld', 'cancelHeld',
-        ]);
+        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice', 'itemAvailability']);
+        $this->middleware('permission:transaction create')->only(['create', 'store']);
     }
 
     public function index(): View|JsonResponse
@@ -44,7 +42,6 @@ class TransactionController extends Controller
                     default => e($t->type),
                 })
                 ->addColumn('status_label', fn (Transaction $t) => match ($t->status) {
-                    'held' => '<span class="badge bg-warning-subtle text-warning">Open Order</span>',
                     'cancelled' => '<span class="badge bg-danger-subtle text-danger">Batal</span>',
                     default => '<span class="badge bg-success-subtle text-success">Selesai</span>',
                 })
@@ -104,91 +101,6 @@ class TransactionController extends Controller
         return redirect()
             ->route('transactions.index')
             ->with('success', 'Transaksi '.$transaction->transaction_no.' berhasil disimpan.');
-    }
-
-    public function hold(Request $request): JsonResponse
-    {
-        $validated = $this->validateTransactionPayload($request, requirePayment: false);
-
-        try {
-            $transaction = $this->transactionService->hold($validated, (int) auth()->id());
-        } catch (InvalidArgumentException $e) {
-            return $this->modalError($e->getMessage());
-        }
-
-        return $this->modalSuccess(
-            'Open order berhasil disimpan.',
-            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
-        );
-    }
-
-    public function updateHold(Request $request, Transaction $transaction): JsonResponse
-    {
-        $validated = $this->validateTransactionPayload($request, requirePayment: false);
-
-        try {
-            $transaction = $this->transactionService->updateHeld($transaction, $validated, (int) auth()->id());
-        } catch (InvalidArgumentException $e) {
-            return $this->modalError($e->getMessage());
-        }
-
-        return $this->modalSuccess(
-            'Open order berhasil diperbarui.',
-            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
-        );
-    }
-
-    public function completeHeld(Request $request, Transaction $transaction): JsonResponse
-    {
-        $validated = $this->validateTransactionPayload($request, requirePayment: true);
-
-        try {
-            $transaction = $this->transactionService->completeHeld($transaction, $validated, (int) auth()->id());
-        } catch (InvalidArgumentException $e) {
-            return $this->modalError($e->getMessage());
-        }
-
-        return $this->modalSuccess(
-            'Transaksi berhasil diselesaikan.',
-            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
-        );
-    }
-
-    public function cancelHeld(Transaction $transaction): JsonResponse
-    {
-        try {
-            $transaction = $this->transactionService->cancelHeld($transaction, (int) auth()->id());
-        } catch (InvalidArgumentException $e) {
-            return $this->modalError($e->getMessage());
-        }
-
-        return $this->modalSuccess(
-            'Open order dibatalkan.',
-            ['transaction_no' => $transaction->transaction_no, 'id' => $transaction->id]
-        );
-    }
-
-    public function heldList(): JsonResponse
-    {
-        $orders = Transaction::query()
-            ->with(['customer:id,name', 'items', 'serviceLines'])
-            ->where('status', 'held')
-            ->latest('held_at')
-            ->latest('id')
-            ->get()
-            ->map(fn (Transaction $t) => [
-                'id' => $t->id,
-                'transaction_no' => $t->transaction_no,
-                'customer_name' => $t->displayCustomerName(),
-                'customer_id' => $t->customer_id,
-                'total' => (float) $t->total,
-                'item_count' => $t->items->sum('quantity'),
-                'service_count' => $t->serviceLines->sum('quantity'),
-                'held_at' => $t->held_at?->toIso8601String(),
-                'created_at' => $t->created_at?->toIso8601String(),
-            ]);
-
-        return response()->json(['data' => $orders]);
     }
 
     public function itemAvailability(Request $request): JsonResponse
@@ -281,10 +193,6 @@ class TransactionController extends Controller
 
     private function paymentBadge(Transaction $t): string
     {
-        if ($t->isHeld() || empty($t->payment_method)) {
-            return '<span class="badge bg-warning-subtle text-warning">Belum bayar</span>';
-        }
-
         $label = \App\Support\PaymentMethodResolver::label($t->payment_method);
 
         if ($t->payment_method === 'transfer' && $t->bankAccount) {

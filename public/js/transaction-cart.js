@@ -12,11 +12,6 @@
         init: function (options) {
             const settings = $.extend({
                 storeUrl: '',
-                holdUrl: '',
-                holdUpdateUrlTemplate: '',
-                completeUrlTemplate: '',
-                cancelUrlTemplate: '',
-                heldListUrl: '',
                 itemAvailabilityUrl: '',
                 showUrlTemplate: '',
                 redirectUrl: '',
@@ -27,8 +22,6 @@
                 services: [],
             }, options);
 
-            let heldTransactionId = null;
-            let heldTransactionNo = null;
             let orderTabs = [];
             let activeTabId = null;
             let tabCounter = 1;
@@ -230,8 +223,6 @@
                     technicianId: '',
                     paymentMethod: $('#payment_method').val() || 'cash',
                     bankAccountId: '',
-                    heldTransactionId: null,
-                    heldTransactionNo: null,
                 };
             }
 
@@ -281,8 +272,6 @@
                 tab.technicianId = $('#technician_id').val() || '';
                 tab.paymentMethod = $('#payment_method').val() || 'cash';
                 tab.bankAccountId = $('#bank_account_id').val() || '';
-                tab.heldTransactionId = heldTransactionId;
-                tab.heldTransactionNo = heldTransactionNo;
 
                 if (hasCustomerSelected() || itemCart.length || serviceCart.length) {
                     tab.label = deriveTabLabelFromForm();
@@ -292,8 +281,6 @@
             function resetFormFields() {
                 itemCart.length = 0;
                 serviceCart.length = 0;
-                heldTransactionId = null;
-                heldTransactionNo = null;
                 $('#discount').val('0');
                 $('#notes').val('');
                 $('#technician_id').val('').trigger('change');
@@ -305,9 +292,6 @@
 
             function loadTabState(tab) {
                 resetFormFields();
-
-                heldTransactionId = tab.heldTransactionId || null;
-                heldTransactionNo = tab.heldTransactionNo || null;
 
                 tab.items.forEach(function (line) {
                     itemCart.push($.extend({}, line));
@@ -403,15 +387,6 @@
                 const hasContent = tab.items.length || tab.services.length || tab.customerId || tab.newCustomer.name;
 
                 function removeTab() {
-                    if (tab.heldTransactionId && settings.cancelUrlTemplate) {
-                        $.ajax({
-                            url: settings.cancelUrlTemplate.replace('__ID__', tab.heldTransactionId),
-                            type: 'DELETE',
-                            data: { _token: $('meta[name="csrf-token"]').attr('content') },
-                            headers: { Accept: 'application/json' },
-                        });
-                    }
-
                     orderTabs.splice(index, 1);
 
                     if (activeTabId === tabId) {
@@ -533,68 +508,6 @@
                 }
 
                 return true;
-            }
-
-            function loadTabFromServer(id) {
-                $.get(settings.showUrlTemplate.replace('__ID__', id), function (res) {
-                    const d = res.data;
-                    if (d.status !== 'held') {
-                        Swal.fire({ icon: 'warning', title: 'Open order tidak ditemukan atau sudah diselesaikan.' });
-                        return;
-                    }
-
-                    saveActiveTabState();
-
-                    const tab = createEmptyTab(d.customer_name || d.transaction_no);
-                    tab.heldTransactionId = d.id;
-                    tab.heldTransactionNo = d.transaction_no;
-                    tab.customerId = d.customer_id ? String(d.customer_id) : '__umum__';
-                    tab.discount = String(d.discount || 0);
-                    tab.notes = d.notes || '';
-                    tab.technicianId = d.technician_id ? String(d.technician_id) : '';
-
-                    (d.items || []).forEach(function (line) {
-                        tab.items.push({
-                            item_id: line.item_id,
-                            code: line.item_code,
-                            name: line.item_name,
-                            quantity: parseInt(line.quantity, 10),
-                            unit_price: parseFloat(line.unit_price),
-                            subtotal: parseFloat(line.subtotal),
-                        });
-                    });
-
-                    (d.service_lines || []).forEach(function (line) {
-                        tab.services.push({
-                            workshop_service_id: line.workshop_service_id,
-                            code: line.service_code,
-                            name: line.service_name,
-                            quantity: parseInt(line.quantity, 10),
-                            unit_price: parseFloat(line.unit_price),
-                            subtotal: parseFloat(line.subtotal),
-                        });
-                    });
-
-                    const active = getActiveTab();
-                    const activeIsEmpty = active
-                        && !active.items.length
-                        && !active.services.length
-                        && !active.customerId
-                        && !active.newCustomer.name;
-
-                    if (activeIsEmpty) {
-                        orderTabs = orderTabs.filter(function (t) { return t.id !== active.id; });
-                    }
-
-                    orderTabs.push(tab);
-                    activeTabId = tab.id;
-                    loadTabState(tab);
-                    renderTabBar();
-
-                    refreshItemStock().always(updateSummary);
-                }).fail(function () {
-                    Swal.fire({ icon: 'error', title: 'Gagal memuat open order.' });
-                });
             }
 
             function recalcLine(line) {
@@ -972,10 +885,6 @@
                 payload.payment_method = $('#payment_method').val();
                 payload.bank_account_id = $('#bank_account_id').val() || null;
 
-                const url = heldTransactionId
-                    ? settings.completeUrlTemplate.replace('__ID__', heldTransactionId)
-                    : settings.storeUrl;
-
                 function handleSubmitSuccess(res) {
                     Swal.fire({
                         icon: 'success',
@@ -998,7 +907,7 @@
                 }
 
                 $.ajax({
-                    url: url,
+                    url: settings.storeUrl,
                     type: 'POST',
                     headers: { Accept: 'application/json' },
                     data: payload,
@@ -1032,12 +941,6 @@
             updateCustomerRemark();
             toggleItemsSectionLock();
             refreshItemStock();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const heldFromUrl = urlParams.get('held');
-            if (heldFromUrl) {
-                loadTabFromServer(heldFromUrl);
-            }
         },
     };
 })(jQuery);
