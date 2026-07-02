@@ -10,9 +10,12 @@ use Spatie\Permission\Models\Role;
 
 class RoleAndPermissionSeeder extends Seeder
 {
-    public function run(): void
+    /**
+     * @return list<string>
+     */
+    public static function permissionNames(): array
     {
-        $permissions = [
+        return [
             'dashboard view',
             'user view', 'user create', 'user edit', 'user delete',
             'role view', 'role create', 'role edit', 'role delete',
@@ -34,8 +37,11 @@ class RoleAndPermissionSeeder extends Seeder
             'bank account view', 'bank account create', 'bank account edit', 'bank account delete',
             'settings view', 'settings edit',
         ];
+    }
 
-        foreach ($permissions as $permission) {
+    public function syncPermissionsAndRoles(): void
+    {
+        foreach (self::permissionNames() as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }
 
@@ -59,8 +65,7 @@ class RoleAndPermissionSeeder extends Seeder
             'manual expense view', 'manual expense create', 'manual expense cancel',
         ]);
 
-        $teknisi = Role::firstOrCreate(['name' => 'Teknisi']);
-        $teknisi->syncPermissions([
+        Role::firstOrCreate(['name' => 'Teknisi'])->syncPermissions([
             'dashboard view',
             'customer view',
             'technician view',
@@ -68,6 +73,11 @@ class RoleAndPermissionSeeder extends Seeder
             'stock report view',
             'transaction view',
         ]);
+    }
+
+    public function run(): void
+    {
+        $this->syncPermissionsAndRoles();
 
         Role::where('name', 'Admin')->each(function (Role $role) {
             $kasir = Role::firstOrCreate(['name' => 'Kasir']);

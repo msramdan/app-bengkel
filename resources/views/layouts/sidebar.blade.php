@@ -21,7 +21,7 @@
                         @if (! empty($item['submenus']))
                             @php
                                 $visibleSubmenus = collect($item['submenus'])->filter(
-                                    fn ($sub) => empty($sub['permission']) || auth()->user()->can($sub['permission'])
+                                    fn ($sub) => user_can_menu($sub['permission'] ?? null)
                                 );
                                 $submenuId = 'submenu-' . str()->slug($item['label']);
                                 $isOpen = is_active_submenu($item['submenus']) === ' active';
@@ -52,7 +52,7 @@
                                     </div>
                                 </li>
                             @endif
-                        @elseif ($item['permission'] === null || auth()->user()->can($item['permission']))
+                        @elseif (user_can_menu($item['permission'] ?? null))
                             <li class="sidebar-menu-item">
                                 <a href="{{ route($item['route']) }}"
                                     class="sidebar-menu-link{{ is_active_menu($item['route']) }}"

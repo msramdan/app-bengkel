@@ -40,6 +40,27 @@ if (! function_exists('brand_logo_url')) {
     }
 }
 
+if (! function_exists('user_can_menu')) {
+    function user_can_menu(?string $permission): bool
+    {
+        if ($permission === null || $permission === '') {
+            return true;
+        }
+
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if (! \Spatie\Permission\Models\Permission::query()->where('name', $permission)->exists()) {
+            return false;
+        }
+
+        return $user->can($permission);
+    }
+}
+
 if (! function_exists('is_active_menu')) {
     function is_active_menu(string|array $routes): string
     {

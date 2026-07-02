@@ -23,7 +23,7 @@
                             <div class="form-check perm-check">
                                 <input class="form-check-input" type="checkbox" name="permissions[]"
                                     id="perm_{{ str()->slug($access) }}" value="{{ $access }}"
-                                    @checked(isset($role) ? $role->hasPermissionTo($access) : in_array($access, old('permissions', [])))>
+                                    @checked(isset($role) ? $role->permissions->contains('name', $access) : in_array($access, old('permissions', [])))>
                                 <label class="form-check-label" for="perm_{{ str()->slug($access) }}">
                                     {{ ucwords($access) }}
                                 </label>
