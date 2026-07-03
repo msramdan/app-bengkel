@@ -21,6 +21,10 @@ class SettingService
                 $merged[$key] = $this->decodeValue($key, $stored[$key] ?? $default);
             }
 
+            if (empty($merged['oil_change_workshop_service_ids']) && ! empty($stored['oil_change_workshop_service_id'])) {
+                $merged['oil_change_workshop_service_ids'] = [(int) $stored['oil_change_workshop_service_id']];
+            }
+
             return $merged;
         });
     }
@@ -47,6 +51,23 @@ class SettingService
     public function getInt(string $key, int $default = 0): int
     {
         return (int) $this->get($key, $default);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function getIntArray(string $key): array
+    {
+        $value = $this->get($key, []);
+
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $value),
+            fn (int $id) => $id > 0,
+        )));
     }
 
     /**
@@ -87,6 +108,15 @@ class SettingService
             return $value ? '1' : '0';
         }
 
+        if (in_array($key, config('settings.json_array_keys', []), true)) {
+            $ids = is_array($value) ? $value : [];
+
+            return json_encode(array_values(array_filter(
+                array_map('intval', $ids),
+                fn (int $id) => $id > 0,
+            )));
+        }
+
         if ($value === null || $value === '') {
             return null;
         }
@@ -117,9 +147,18 @@ class SettingService
 
         if (in_array($key, [
             'oil_change_reminder_months',
-            'oil_change_workshop_service_id',
         ], true)) {
             return $raw === null || $raw === '' ? null : (int) $raw;
+        }
+
+        if (in_array($key, config('settings.json_array_keys', []), true)) {
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+
+                return is_array($decoded) ? array_map('intval', $decoded) : [];
+            }
+
+            return is_array($raw) ? array_map('intval', $raw) : [];
         }
 
         return (string) $raw;

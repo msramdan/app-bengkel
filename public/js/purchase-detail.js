@@ -5,6 +5,10 @@
         return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
     }
 
+    function escapeHtml(text) {
+        return $('<div>').text(text || '').html();
+    }
+
     function paymentLabel(d) {
         const labels = { cash: 'Cash', qris: 'QRIS', transfer: 'Transfer Bank' };
         let text = labels[d.payment_method] || d.payment_method || '-';
@@ -20,11 +24,63 @@
                 table: '#data-table',
                 showModal: '#show-modal',
                 showUrl: '',
+                cancelUrlTemplate: '',
+                canCancel: false,
             }, options);
 
             const $table = $(settings.table);
             const $showModal = $(settings.showModal);
             const showModal = bootstrap.Modal.getOrCreateInstance($showModal[0]);
+            const dataTable = $table.DataTable ? $table.DataTable() : null;
+
+            if (settings.canCancel && settings.cancelUrlTemplate) {
+                $table.on('click', '[data-action="cancel-purchase"]', function () {
+                    const id = $(this).data('id');
+                    const no = $(this).data('no') || id;
+
+                    Swal.fire({
+                        title: 'Batalkan pembelian?',
+                        html: 'Pembelian <strong>' + escapeHtml(no) + '</strong> akan dibatalkan.<br>Stok dikurangi kembali dan pengeluaran dihapus dari laporan keuangan.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, batalkan',
+                        cancelButtonText: 'Tidak',
+                        confirmButtonColor: '#dc3545',
+                    }).then(function (result) {
+                        if (!result.isConfirmed) {
+                            return;
+                        }
+
+                        $.ajax({
+                            url: settings.cancelUrlTemplate.replace('__ID__', id),
+                            type: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                            },
+                            data: { _method: 'DELETE' },
+                            success: function (res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: res.message || 'Pembelian dibatalkan.',
+                                    timer: 1600,
+                                    showConfirmButton: false,
+                                });
+                                if (dataTable) {
+                                    dataTable.ajax.reload(null, false);
+                                }
+                            },
+                            error: function (xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: xhr.responseJSON?.message || 'Gagal membatalkan pembelian.',
+                                });
+                            },
+                        });
+                    });
+                });
+            }
 
             $table.on('click', '[data-action="show-purchase"]', function () {
                 const id = $(this).data('id');
@@ -44,14 +100,20 @@
                         </tr>`;
                     }).join('');
 
+                    const statusBadge = d.status === 'cancelled'
+                        ? '<span class="badge bg-danger-subtle text-danger">Batal</span>'
+                        : '<span class="badge bg-success-subtle text-success">Selesai</span>';
+
                     $body.html(`
                         <dl class="detail-list mb-3">
                             <dt>No. Pembelian</dt><dd>${d.purchase_no}</dd>
+                            <dt>Status</dt><dd>${statusBadge}</dd>
                             <dt>Supplier</dt><dd>${d.supplier_name || '-'}</dd>
                             <dt>Petugas</dt><dd>${d.user?.name || '-'}</dd>
                             <dt>Waktu</dt><dd>${new Date(d.created_at).toLocaleString('id-ID')}</dd>
                             <dt>Metode Bayar</dt><dd>${paymentLabel(d)}</dd>
                             <dt>Catatan</dt><dd>${d.notes || '-'}</dd>
+                            ${d.status === 'cancelled' ? `<dt>Dibatalkan</dt><dd>${d.cancelled_at ? new Date(d.cancelled_at).toLocaleString('id-ID') : '-'}${d.cancelled_by_user ? ' oleh ' + d.cancelled_by_user.name : ''}</dd>` : ''}
                         </dl>
                         <div class="table-responsive border rounded mb-3">
                             <table class="table table-sm mb-0">

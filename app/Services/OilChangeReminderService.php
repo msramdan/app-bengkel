@@ -69,7 +69,7 @@ class OilChangeReminderService
                 continue;
             }
 
-            $message = $this->buildMessage($customer, $transaction, $intervalMonths);
+            $message = $this->buildMessage($customer, $transaction, $line, $intervalMonths);
 
             try {
                 $result = $this->hiwa->send($customer->phone, $message);
@@ -100,14 +100,14 @@ class OilChangeReminderService
      */
     private function dueCandidates(int $intervalMonths, Carbon $asOf): Collection
     {
-        $serviceId = $this->settings->get('oil_change_workshop_service_id');
+        $serviceIds = $this->settings->getIntArray('oil_change_workshop_service_ids');
 
         $lines = TransactionServiceLine::query()
             ->whereHas('transaction', function ($query) {
                 $query->where('status', 'completed');
             })
-            ->when($serviceId, function ($query) use ($serviceId) {
-                $query->where('workshop_service_id', $serviceId);
+            ->when($serviceIds !== [], function ($query) use ($serviceIds) {
+                $query->whereIn('workshop_service_id', $serviceIds);
             }, function ($query) {
                 $query->where(function ($inner) {
                     $inner->where('service_name', 'like', '%ganti oli%')
@@ -135,14 +135,19 @@ class OilChangeReminderService
             ->values();
     }
 
-    private function buildMessage(Customer $customer, Transaction $transaction, int $intervalMonths): string
-    {
+    private function buildMessage(
+        Customer $customer,
+        Transaction $transaction,
+        TransactionServiceLine $line,
+        int $intervalMonths,
+    ): string {
         $template = (string) config('reminders.oil_change_message');
 
         $replacements = [
             '{nama_pelanggan}' => $customer->name,
             '{nama_aplikasi}' => $this->settings->getString('app_name', brand_name()),
             '{interval_bulan}' => (string) $intervalMonths,
+            '{nama_jasa}' => $line->service_name,
             '{tanggal_servis}' => $transaction->created_at?->format('d/m/Y') ?? '-',
             '{no_transaksi}' => $transaction->transaction_no,
         ];

@@ -5,40 +5,41 @@
         return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
     }
 
-    window.AthaPurchaseCart = {
+    window.AthaPurchaseEdit = {
         init: function (options) {
             const settings = $.extend({
-                storeUrl: '',
+                updateUrl: '',
                 redirectUrl: '',
                 items: [],
+                initial: {},
             }, options);
 
-            const cart = [];
+            const cart = (settings.initial.items || []).map(function (line) {
+                return {
+                    item_id: line.item_id,
+                    code: line.code,
+                    name: line.name,
+                    quantity: parseInt(line.quantity, 10) || 1,
+                    unit_price: parseFloat(line.unit_price) || 0,
+                    subtotal: Math.round((parseFloat(line.unit_price) || 0) * (parseInt(line.quantity, 10) || 1)),
+                };
+            });
+
             const $itemsBody = $('#items-cart-body');
             const $itemsEmpty = $('#items-cart-empty');
             const $submit = $('#btn-submit');
 
-            function getSupplierMode() {
-                const val = $('#supplier_id').val();
-                if (val === '__new__') {
-                    return 'new';
-                }
-                if (val) {
-                    return 'existing';
-                }
-                return 'none';
-            }
-
-            function toggleNewSupplierFields() {
-                const isNew = getSupplierMode() === 'new';
-                $('#new-supplier-fields').toggleClass('d-none', !isNew);
-            }
-
-            $('#supplier_id').on('change', toggleNewSupplierFields);
-            toggleNewSupplierFields();
-
             function findItem(id) {
                 return settings.items.find(function (i) { return String(i.id) === String(id); });
+            }
+
+            function getCurrentStock(itemId) {
+                const item = findItem(itemId);
+                return item ? parseInt(item.stock, 10) || 0 : 0;
+            }
+
+            function minAllowedQty(line) {
+                return Math.max(1, line.quantity - getCurrentStock(line.item_id));
             }
 
             function recalcLine(line) {
@@ -48,9 +49,9 @@
             function renderCart() {
                 $itemsBody.empty();
                 if (!cart.length) {
-                    $itemsEmpty.show();
+                    $itemsEmpty.removeClass('d-none');
                 } else {
-                    $itemsEmpty.hide();
+                    $itemsEmpty.addClass('d-none');
                     cart.forEach(function (line, index) {
                         $itemsBody.append(`
                             <tr>
@@ -138,7 +139,22 @@
             });
 
             $itemsBody.on('click', '.btn-remove-item', function () {
-                cart.splice($(this).data('index'), 1);
+                const index = $(this).data('index');
+                const line = cart[index];
+                if (!line) {
+                    return;
+                }
+
+                if (line.quantity > getCurrentStock(line.item_id)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Stok tidak cukup',
+                        text: 'Barang ini tidak bisa dihapus karena stok tersedia tidak cukup untuk rollback.',
+                    });
+                    return;
+                }
+
+                cart.splice(index, 1);
                 renderCart();
             });
 
@@ -158,21 +174,24 @@
                     return false;
                 }
 
+                const minQty = minAllowedQty(line);
+                if (qty < minQty) {
+                    if (showError) {
+                        $input.val(line.quantity);
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Stok tidak cukup',
+                            text: 'Qty minimal ' + minQty + ' (stok tersedia tidak cukup untuk mengurangi lebih banyak).',
+                        });
+                    }
+                    return false;
+                }
+
                 line.quantity = qty;
                 recalcLine(line);
                 $input.val(qty);
                 $input.closest('tr').find('.cart-subtotal').text(formatRp(line.subtotal));
                 updateSummary();
-                return true;
-            }
-
-            function validateCartQty() {
-                for (let i = 0; i < cart.length; i++) {
-                    if (cart[i].quantity < 1) {
-                        Swal.fire({ icon: 'warning', title: 'Qty barang tidak valid.', text: cart[i].name });
-                        return false;
-                    }
-                }
                 return true;
             }
 
@@ -184,15 +203,9 @@
                 handleQtyInput($(this), true);
             });
 
-            $('#discount').on('change input', updateSummary);
-
             $('#purchase-form').on('submit', function (e) {
                 e.preventDefault();
                 if (!cart.length) {
-                    return;
-                }
-
-                if (!validateCartQty()) {
                     return;
                 }
 
@@ -201,48 +214,27 @@
                     return;
                 }
 
-                const supplierMode = getSupplierMode();
-                if (supplierMode === 'new' && !$('#new_supplier_name').val().trim()) {
-                    Swal.fire({ icon: 'warning', title: 'Nama supplier baru wajib diisi.' });
-                    return;
-                }
-
                 $submit.prop('disabled', true);
 
-                const payload = {
-                    _token: $('meta[name="csrf-token"]').attr('content'),
-                    supplier_mode: supplierMode,
-                    discount: $('#discount').val() || 0,
-                    notes: $('#notes').val(),
-                    payment_method: $('#payment_method').val(),
-                    bank_account_id: $('#bank_account_id').val() || null,
-                    items: cart.map(function (l) {
-                        return { item_id: l.item_id, quantity: l.quantity };
-                    }),
-                };
-
-                if (supplierMode === 'existing') {
-                    payload.supplier_id = $('#supplier_id').val();
-                }
-
-                if (supplierMode === 'new') {
-                    payload.new_supplier = {
-                        name: $('#new_supplier_name').val().trim(),
-                        phone: $('#new_supplier_phone').val().trim() || null,
-                        address: $('#new_supplier_address').val().trim() || null,
-                    };
-                }
-
                 $.ajax({
-                    url: settings.storeUrl,
+                    url: settings.updateUrl,
                     type: 'POST',
                     headers: { Accept: 'application/json' },
-                    data: payload,
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        _method: 'PUT',
+                        discount: $('#discount').val() || 0,
+                        notes: $('#notes').val(),
+                        payment_method: $('#payment_method').val(),
+                        bank_account_id: $('#bank_account_id').val() || null,
+                        items: cart.map(function (l) {
+                            return { item_id: l.item_id, quantity: l.quantity };
+                        }),
+                    },
                     success: function (res) {
                         Swal.fire({
                             icon: 'success',
                             title: res.message,
-                            text: res.data?.purchase_no || '',
                             timer: 2000,
                             showConfirmButton: false,
                         }).then(function () {
@@ -257,7 +249,7 @@
                 });
             });
 
-            updateSummary();
+            renderCart();
         },
     };
 })(jQuery);

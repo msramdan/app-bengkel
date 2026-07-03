@@ -15,6 +15,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StockInController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\StockOutController;
 use App\Http\Controllers\StockReportController;
 use App\Http\Controllers\TechnicianController;
@@ -42,6 +43,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Fase 1 — Master data & inventory
     Route::resource('customers', CustomerController::class)->except(['create', 'edit']);
+    Route::resource('suppliers', SupplierController::class)->except(['create', 'edit']);
     Route::resource('technicians', TechnicianController::class)->except(['create', 'edit']);
     Route::resource('item-categories', ItemCategoryController::class)->except(['create', 'edit']);
     Route::resource('item-units', ItemUnitController::class)->except(['create', 'edit']);
@@ -66,7 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
     Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
 
-    Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
 
     Route::get('financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
     Route::get('financial-reports/export-pdf', [FinancialReportController::class, 'exportPdf'])->name('financial-reports.export-pdf');

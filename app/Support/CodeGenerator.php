@@ -10,6 +10,8 @@ class CodeGenerator
 {
   public const PREFIX_CUSTOMER = 'PLG';
 
+  public const PREFIX_SUPPLIER = 'SUP';
+
   public const PREFIX_TECHNICIAN = 'TKN';
 
   public const PREFIX_ITEM = 'BRG';

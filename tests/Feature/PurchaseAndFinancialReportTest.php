@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemUnit;
 use App\Models\StockMovement;
+use App\Models\Supplier;
 use App\Models\Technician;
 use App\Models\Transaction;
 use App\Models\User;
@@ -78,8 +79,11 @@ class PurchaseAndFinancialReportTest extends TestCase
     #[Test]
     public function purchase_increases_stock_and_records_expense(): void
     {
+        $supplier = Supplier::create(['code' => 'SUP-PBL-01', 'name' => 'Supplier ABC']);
+
         $purchase = app(PurchaseService::class)->create([
-            'supplier_name' => 'Supplier ABC',
+            'supplier_mode' => 'existing',
+            'supplier_id' => $supplier->id,
             'items' => [['item_id' => $this->item->id, 'quantity' => 10]],
         ], $this->user->id);
 

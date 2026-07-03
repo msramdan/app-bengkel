@@ -28,6 +28,7 @@
                         <tr>
                             <th>No</th>
                             <th>No. Pembelian</th>
+                            <th>Status</th>
                             <th>Supplier</th>
                             <th>Total Pengeluaran</th>
                             <th>Metode Bayar</th>
@@ -68,10 +69,11 @@
             processing: true,
             serverSide: true,
             ajax: '{{ route('purchases.index') }}',
-            order: [[6, 'desc']],
+            order: [[7, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'purchase_no', name: 'purchase_no' },
+                { data: 'status_label', name: 'status', orderable: false, searchable: false },
                 { data: 'supplier_name', name: 'supplier_name', orderable: false },
                 { data: 'total_fmt', name: 'total', orderable: false, searchable: false },
                 { data: 'payment_label', name: 'payment_method', orderable: false },
@@ -85,6 +87,8 @@
             table: '#data-table',
             showModal: '#show-modal',
             showUrl: '{{ route('purchases.show', '__ID__') }}',
+            cancelUrlTemplate: '{{ route('purchases.destroy', '__ID__') }}',
+            canCancel: @json(auth()->user()->can('purchase delete')),
         });
     </script>
 @endpush

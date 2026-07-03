@@ -158,7 +158,8 @@ class StockAndPurchaseSecurityTest extends TestCase
     {
         $this->actingAs($this->kasir)
             ->postJson(route('purchases.store'), [
-                'supplier_name' => 'Supplier Test',
+                'supplier_mode' => 'new',
+                'new_supplier' => ['name' => 'Supplier Test'],
                 'payment_method' => 'cash',
                 'items' => [['item_id' => $this->item->id, 'quantity' => 4]],
             ])
@@ -167,6 +168,7 @@ class StockAndPurchaseSecurityTest extends TestCase
 
         $this->assertSame(14, $this->item->fresh()->stock);
         $this->assertDatabaseHas('purchases', ['supplier_name' => 'Supplier Test']);
+        $this->assertDatabaseHas('suppliers', ['name' => 'Supplier Test']);
     }
 
     #[Test]

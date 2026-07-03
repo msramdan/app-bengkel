@@ -1,20 +1,45 @@
 @extends('layouts.app')
 
-@section('title', 'Pembelian Baru')
+@section('title', 'Edit Pembelian')
 
 @section('content')
     @include('layouts.partials.page-hero', [
         'items' => [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Pembelian', 'url' => route('purchases.index')],
-            ['label' => 'Baru'],
+            ['label' => 'Pembelian Barang', 'url' => route('purchases.index')],
+            ['label' => 'Edit'],
         ],
-        'title' => 'Pembelian Baru',
-        'subtitle' => 'Beli barang dari supplier — stok otomatis masuk & tercatat sebagai pengeluaran.',
+        'title' => 'Edit Pembelian',
+        'subtitle' => $purchase->purchase_no,
     ])
 
     <form id="purchase-form">
         @csrf
+        @method('PUT')
+
+        <div class="data-panel mb-4">
+            <div class="data-panel-head">
+                <h2 class="data-panel-title"><i class="bi bi-info-circle me-1"></i> Informasi Pembelian</h2>
+            </div>
+            <div class="data-panel-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="text-muted small">No. Pembelian</div>
+                        <div class="fw-semibold">{{ $purchase->purchase_no }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">Supplier</div>
+                        <div class="fw-semibold">{{ $purchase->displaySupplierName() }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">Waktu</div>
+                        <div class="fw-semibold">{{ $purchase->created_at?->format('d/m/Y H:i') }}</div>
+                    </div>
+                </div>
+                <div class="form-hint-sm mt-2 mb-0">Supplier tidak dapat diubah. Koreksi stok & pengeluaran disesuaikan otomatis.</div>
+            </div>
+        </div>
+
         <div class="row g-4">
             <div class="col-lg-8">
                 <div class="data-panel">
@@ -67,7 +92,7 @@
                                 </thead>
                                 <tbody id="items-cart-body"></tbody>
                             </table>
-                            <div id="items-cart-empty" class="text-center text-muted py-3 small">Belum ada barang.</div>
+                            <div id="items-cart-empty" class="text-center text-muted py-3 small d-none">Belum ada barang.</div>
                         </div>
                     </div>
                 </div>
@@ -80,57 +105,20 @@
                     </div>
                     <div class="data-panel-body">
                         <div class="mb-3">
-                            <label class="form-label" for="supplier_id">Supplier</label>
-                            <select id="supplier_id" class="form-control-clean atha-searchable-select">
-                                <option value="">-- Opsional --</option>
-                                <optgroup label="Supplier terdaftar">
-                                    @foreach ($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}">
-                                            {{ $supplier->code }} — {{ $supplier->name }}
-                                        </option>
-                                    @endforeach
-                                </optgroup>
-                                <option value="__new__">+ Supplier baru...</option>
-                            </select>
-                            <div class="form-hint-sm">Pilih supplier terdaftar atau buat baru — otomatis tersimpan ke master data.</div>
-                        </div>
-                        <div id="new-supplier-fields" class="border rounded p-3 mb-3 d-none">
-                            <div class="small fw-semibold mb-2"><i class="bi bi-truck me-1"></i> Data supplier baru</div>
-                            <div class="mb-2">
-                                <label class="form-label small mb-0" for="new_supplier_name">Nama <span class="text-danger">*</span></label>
-                                <input type="text" id="new_supplier_name" class="form-control form-control-clean" placeholder="Nama supplier" autocomplete="off">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small mb-0" for="new_supplier_phone">Telepon</label>
-                                <input type="text" id="new_supplier_phone" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label small mb-0" for="new_supplier_address">Alamat</label>
-                                <input type="text" id="new_supplier_address" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
-                            </div>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label">Diskon (Rp)</label>
-                            <input type="number" name="discount" id="discount" class="form-control form-control-clean" min="0" value="0" step="0.01">
+                            <input type="number" name="discount" id="discount" class="form-control form-control-clean" min="0" value="{{ (float) $purchase->discount }}" step="0.01">
                         </div>
 
                         @include('layouts.partials.payment-fields', [
                             'bankAccounts' => $bankAccounts,
                             'paymentMethods' => config('workshop.purchase_payment_methods', []),
+                            'paymentMethod' => $purchase->payment_method,
+                            'bankAccountId' => $purchase->bank_account_id,
                         ])
 
                         <div class="mb-3">
                             <label class="form-label">Catatan</label>
-                            <textarea name="notes" id="notes" class="form-control form-control-clean" rows="2"></textarea>
-                        </div>
-
-                        <div class="alert alert-light border py-2 px-3 small mb-3">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Harga beli diambil dari <strong>master barang</strong>. Setelah simpan:
-                            <ul class="mb-0 ps-3 mt-1">
-                                <li>Stok masuk otomatis (lihat Stok Masuk)</li>
-                                <li>Pengeluaran tercatat di Laporan Keuangan</li>
-                            </ul>
+                            <textarea name="notes" id="notes" class="form-control form-control-clean" rows="2">{{ $purchase->notes }}</textarea>
                         </div>
 
                         <hr>
@@ -148,8 +136,8 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="btn-submit" disabled>
-                                <i class="bi bi-check-lg"></i> Simpan Pembelian
+                            <button type="submit" class="btn btn-primary btn-lg" id="btn-submit">
+                                <i class="bi bi-check-lg"></i> Simpan Perubahan
                             </button>
                             <a href="{{ route('purchases.index') }}" class="btn btn-light">Batal</a>
                         </div>
@@ -162,12 +150,17 @@
 
 @push('js')
     <script src="{{ asset('js/payment-fields.js') }}"></script>
-    <script src="{{ asset('js/purchase-cart.js') }}"></script>
+    <script src="{{ asset('js/purchase-edit.js') }}"></script>
     <script>
+        $('#payment_method').val(@json($purchase->payment_method));
+        $('#bank_account_id').val(@json($purchase->bank_account_id));
         AthaPaymentFields.init();
-        AthaPurchaseCart.init({
-            storeUrl: '{{ route('purchases.store') }}',
+        AthaPurchaseEdit.init({
+            updateUrl: '{{ route('purchases.update', $purchase) }}',
             redirectUrl: '{{ route('purchases.index') }}',
+            initial: {
+                items: @json($initialItems),
+            },
             items: @json($items),
         });
     </script>

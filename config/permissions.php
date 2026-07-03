@@ -18,6 +18,10 @@ return [
         'access' => ['customer view', 'customer create', 'customer edit', 'customer delete'],
     ],
     [
+        'group' => 'Supplier',
+        'access' => ['supplier view', 'supplier create', 'supplier edit', 'supplier delete'],
+    ],
+    [
         'group' => 'Teknisi',
         'access' => ['technician view', 'technician create', 'technician edit', 'technician delete'],
     ],
@@ -55,7 +59,7 @@ return [
     ],
     [
         'group' => 'Pembelian',
-        'access' => ['purchase view', 'purchase create'],
+        'access' => ['purchase view', 'purchase create', 'purchase edit', 'purchase delete'],
     ],
     [
         'group' => 'Laporan Keuangan',

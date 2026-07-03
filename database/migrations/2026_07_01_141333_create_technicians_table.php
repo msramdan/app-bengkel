@@ -12,10 +12,11 @@ return new class extends Migration
             $table->id();
             $table->string('code', 30)->unique();
             $table->string('name');
+            $table->string('photo')->nullable();
             $table->string('phone', 30)->nullable();
             $table->string('email')->nullable();
             $table->string('specialty')->nullable();
-            $table->decimal('commission_percent', 5, 2)->default(0);
+            $table->decimal('commission_percent', 5, 2)->default(20);
             $table->boolean('is_active')->default(true);
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->text('notes')->nullable();

@@ -9,10 +9,14 @@ return [
         'hiwa_token_device' => env('HIWA_TOKEN_DEVICE', ''),
         'oil_change_reminder_enabled' => false,
         'oil_change_reminder_months' => 3,
-        'oil_change_workshop_service_id' => null,
+        'oil_change_workshop_service_ids' => [],
     ],
 
     'encrypted_keys' => [
         'hiwa_token_device',
+    ],
+
+    'json_array_keys' => [
+        'oil_change_workshop_service_ids',
     ],
 ];

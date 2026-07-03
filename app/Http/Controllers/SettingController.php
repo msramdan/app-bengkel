@@ -45,8 +45,16 @@ class SettingController extends Controller
             'hiwa_token_device' => ['nullable', 'string', 'max:500'],
             'oil_change_reminder_enabled' => ['nullable', 'boolean'],
             'oil_change_reminder_months' => ['required', 'integer', 'min:1', 'max:24'],
-            'oil_change_workshop_service_id' => ['nullable', 'exists:workshop_services,id'],
+            'oil_change_workshop_service_ids' => ['nullable', 'array'],
+            'oil_change_workshop_service_ids.*' => ['integer', 'exists:workshop_services,id'],
         ]);
+
+        $serviceIds = collect($validated['oil_change_workshop_service_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
 
         $payload = [
             'app_name' => $validated['app_name'],
@@ -55,7 +63,7 @@ class SettingController extends Controller
             'hiwa_enabled' => $request->boolean('hiwa_enabled'),
             'oil_change_reminder_enabled' => $request->boolean('oil_change_reminder_enabled'),
             'oil_change_reminder_months' => (int) $validated['oil_change_reminder_months'],
-            'oil_change_workshop_service_id' => $validated['oil_change_workshop_service_id'] ?? null,
+            'oil_change_workshop_service_ids' => $serviceIds,
         ];
 
         $newToken = trim((string) ($validated['hiwa_token_device'] ?? ''));

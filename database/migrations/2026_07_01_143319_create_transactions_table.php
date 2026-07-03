@@ -12,7 +12,8 @@ return new class extends Migration
             $table->id();
             $table->string('transaction_no', 50)->unique();
             $table->enum('type', ['sale', 'service', 'combined']);
-            $table->foreignId('customer_id')->constrained()->restrictOnDelete();
+            $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('customer_name', 255)->nullable();
             $table->foreignId('technician_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('user_id')->constrained()->restrictOnDelete();
             $table->decimal('subtotal_items', 15, 2)->default(0);
@@ -24,11 +25,18 @@ return new class extends Migration
             $table->decimal('owner_items_share', 15, 2)->default(0);
             $table->decimal('owner_total_share', 15, 2)->default(0);
             $table->enum('status', ['completed', 'cancelled'])->default('completed');
+            $table->timestamp('cancelled_at')->nullable();
+            $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('notes')->nullable();
+            $table->enum('payment_method', ['cash', 'qris', 'transfer'])->default('cash');
+            $table->foreignId('bank_account_id')->nullable()->constrained()->nullOnDelete();
+            $table->decimal('cash_received', 15, 2)->nullable();
+            $table->decimal('cash_change', 15, 2)->nullable();
             $table->timestamps();
 
             $table->index('type');
             $table->index('created_at');
+            $table->index('payment_method');
             $table->index(['customer_id', 'created_at']);
             $table->index(['technician_id', 'created_at']);
         });

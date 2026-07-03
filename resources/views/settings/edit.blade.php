@@ -9,7 +9,7 @@
             ['label' => 'Pengaturan Aplikasi'],
         ],
         'title' => 'Pengaturan Aplikasi',
-        'subtitle' => 'Branding aplikasi, gateway WhatsApp HiWA, dan pengingat servis ganti oli.',
+        'subtitle' => 'Branding aplikasi, gateway WhatsApp HiWA, dan pengingat servis berkala.',
     ])
 
     @if (session('success'))
@@ -79,7 +79,7 @@
             <div class="col-12">
                 <div class="data-panel">
                     <div class="data-panel-head data-panel-head-row">
-                        <h2 class="data-panel-title"><i class="bi bi-bell me-1"></i> Pengingat Ganti Oli</h2>
+                        <h2 class="data-panel-title"><i class="bi bi-bell me-1"></i> Pengingat Servis Berkala</h2>
                         @can('settings edit')
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-run-reminders">
                                 <i class="bi bi-play-circle"></i> Jalankan Sekarang
@@ -100,18 +100,33 @@
                                         value="{{ old('oil_change_reminder_months', $settings['oil_change_reminder_months']) }}" required>
                                     <span class="input-group-text">bulan</span>
                                 </div>
-                                <div class="form-hint-sm">Contoh: 2 atau 3 bulan setelah servis ganti oli terakhir.</div>
+                                <div class="form-hint-sm">Contoh: 2 atau 3 bulan setelah servis terakhir pelanggan.</div>
                             </div>
                             <div class="col-md-8">
-                                <label class="form-label">Jasa Servis Ganti Oli</label>
-                                <select name="oil_change_workshop_service_id" class="form-select form-control-clean">
-                                    <option value="">— Otomatis (cocokkan nama jasa mengandung "oli") —</option>
-                                    @foreach ($workshopServices as $service)
-                                        <option value="{{ $service->id }}" @selected((string) old('oil_change_workshop_service_id', $settings['oil_change_workshop_service_id']) === (string) $service->id)>
-                                            {{ $service->code }} — {{ $service->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                @php
+                                    $selectedServiceIds = collect(old('oil_change_workshop_service_ids', $settings['oil_change_workshop_service_ids'] ?? []))
+                                        ->map(fn ($id) => (int) $id)
+                                        ->all();
+                                @endphp
+                                <label class="form-label">Jasa Servis Pengingat</label>
+                                <div class="border rounded p-3 reminder-service-list" style="max-height: 220px; overflow-y: auto;">
+                                    @forelse ($workshopServices as $service)
+                                        <div class="form-check">
+                                            <input type="checkbox"
+                                                class="form-check-input"
+                                                name="oil_change_workshop_service_ids[]"
+                                                value="{{ $service->id }}"
+                                                id="reminder_service_{{ $service->id }}"
+                                                @checked(in_array($service->id, $selectedServiceIds, true))>
+                                            <label class="form-check-label" for="reminder_service_{{ $service->id }}">
+                                                {{ $service->code }} — {{ $service->name }}
+                                            </label>
+                                        </div>
+                                    @empty
+                                        <p class="text-muted small mb-0">Belum ada jasa servis aktif. Tambahkan di menu Master Jasa.</p>
+                                    @endforelse
+                                </div>
+                                <div class="form-hint-sm">Pilih satu atau lebih jasa. Kosongkan semua untuk otomatis mencocokkan nama jasa yang mengandung "oli".</div>
                             </div>
                         </div>
                         <p class="form-hint-sm mt-3 mb-0">

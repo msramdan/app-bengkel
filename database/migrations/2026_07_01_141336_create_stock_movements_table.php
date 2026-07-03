@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('item_id')->constrained()->restrictOnDelete();
             $table->enum('type', ['in', 'out']);
+            $table->string('batch_no', 50);
             $table->unsignedInteger('quantity');
             $table->unsignedInteger('stock_before');
             $table->unsignedInteger('stock_after');
@@ -22,6 +23,7 @@ return new class extends Migration
 
             $table->index(['item_id', 'created_at']);
             $table->index('type');
+            $table->index('batch_no');
             $table->index('created_at');
         });
     }

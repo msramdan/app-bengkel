@@ -12,12 +12,14 @@ return new class extends Migration
             $table->id();
             $table->string('code', 50)->unique();
             $table->string('name');
+            $table->string('photo')->nullable();
             $table->foreignId('category_id')->constrained('item_categories')->restrictOnDelete();
             $table->foreignId('unit_id')->constrained('item_units')->restrictOnDelete();
             $table->unsignedInteger('stock')->default(0);
-            $table->unsignedInteger('min_stock')->default(0);
+            $table->unsignedInteger('stock_opname')->default(0);
             $table->decimal('purchase_price', 15, 2)->default(0);
             $table->decimal('selling_price', 15, 2)->default(0);
+            $table->decimal('member_price', 15, 2)->default(0);
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

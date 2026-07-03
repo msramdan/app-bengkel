@@ -23,6 +23,12 @@ return [
                     'permission' => 'customer view',
                 ],
                 [
+                    'label' => 'Supplier',
+                    'icon' => 'bi-truck',
+                    'route' => 'suppliers.index',
+                    'permission' => 'supplier view',
+                ],
+                [
                     'label' => 'Teknisi',
                     'icon' => 'bi-wrench-adjustable',
                     'route' => 'technicians.index',
