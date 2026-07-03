@@ -9,8 +9,17 @@
             $paymentLabel .= ' — '.$transaction->bankAccount->displayLabel();
         }
         $rp = fn ($n) => 'Rp '.number_format((float) $n, 0, ',', '.');
-        $printedAt = now()->timezone(config('app.timezone'))->format('d/m/Y, H.i.s');
+        $printedAt = now()->timezone(config('app.timezone'))->format('d/m/Y H:i');
         $txDate = $transaction->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i');
+
+        $hasItems = (float) $transaction->subtotal_items > 0;
+        $hasServices = (float) $transaction->subtotal_services > 0;
+        $showSubtotals = $hasItems && $hasServices;
+
+        $customerMeta = collect([
+            $transaction->customer?->phone,
+            $transaction->customer?->address,
+        ])->filter()->implode(' · ');
 
         $lines = collect();
         foreach ($transaction->items as $item) {
@@ -38,104 +47,80 @@
 
     <article class="receipt-thermal">
         <div class="receipt-center receipt-brand">{{ brand_name() }}</div>
-        <div class="receipt-center receipt-sub">{{ brand_tagline() }}</div>
-
-        <div class="receipt-divider">--------------------------</div>
         <div class="receipt-center receipt-title">NOTA PENJUALAN</div>
-        <div class="receipt-divider">--------------------------</div>
+        <div class="receipt-center receipt-meta">{{ $transaction->transaction_no }} · {{ $txDate }}</div>
 
-        <div class="receipt-row">
-            <span>No.</span>
-            <span>{{ $transaction->transaction_no }}</span>
-        </div>
-        <div class="receipt-row">
-            <span>Tgl</span>
-            <span>{{ $txDate }}</span>
-        </div>
+        <div class="receipt-sep"></div>
 
-        <div class="receipt-divider">--------------------------</div>
-        <div class="receipt-label">Kepada:</div>
-        <div class="receipt-text">{{ $transaction->displayCustomerName() }}</div>
-        @if ($transaction->customer?->phone)
-            <div class="receipt-text">{{ $transaction->customer->phone }}</div>
+        <div class="receipt-text receipt-text--strong">{{ $transaction->displayCustomerName() }}</div>
+        @if ($customerMeta !== '')
+            <div class="receipt-text receipt-text--muted">{{ $customerMeta }}</div>
         @endif
-        @if ($transaction->customer?->address)
-            <div class="receipt-text">{{ $transaction->customer->address }}</div>
-        @endif
-        <div class="receipt-row">
-            <span>Metode Bayar</span>
+        <div class="receipt-row receipt-row--tight">
             <span>{{ $paymentLabel }}</span>
-        </div>
-        @if ($transaction->technician)
-            <div class="receipt-row">
-                <span>Teknisi</span>
+            @if ($transaction->technician)
                 <span>{{ $transaction->technician->name }}</span>
-            </div>
-        @endif
+            @endif
+        </div>
 
-        <div class="receipt-divider">--------------------------</div>
+        <div class="receipt-sep"></div>
 
         @forelse ($lines as $line)
             <div class="receipt-item">
-                <div class="receipt-item-name">{{ $line['name'] }}</div>
-                <div class="receipt-row receipt-item-meta">
-                    <span>{{ number_format($line['quantity']) }} x {{ $rp($line['unit_price']) }}</span>
+                <div class="receipt-row receipt-row--tight">
+                    <span class="receipt-item-name">{{ $line['name'] }}</span>
                     <span>{{ $rp($line['subtotal']) }}</span>
                 </div>
+                <div class="receipt-text receipt-text--muted">{{ number_format($line['quantity']) }} × {{ $rp($line['unit_price']) }}</div>
             </div>
         @empty
             <div class="receipt-text receipt-center">Tidak ada rincian.</div>
         @endforelse
 
-        <div class="receipt-divider">--------------------------</div>
+        <div class="receipt-sep"></div>
 
-        @if ((float) $transaction->subtotal_items > 0)
-            <div class="receipt-row">
-                <span>Subtotal Barang</span>
+        @if ($showSubtotals)
+            <div class="receipt-row receipt-row--tight">
+                <span>Barang</span>
                 <span>{{ $rp($transaction->subtotal_items) }}</span>
             </div>
-        @endif
-        @if ((float) $transaction->subtotal_services > 0)
-            <div class="receipt-row">
-                <span>Subtotal Jasa</span>
+            <div class="receipt-row receipt-row--tight">
+                <span>Jasa</span>
                 <span>{{ $rp($transaction->subtotal_services) }}</span>
             </div>
         @endif
         @if ((float) $transaction->discount > 0)
-            <div class="receipt-row">
+            <div class="receipt-row receipt-row--tight">
                 <span>Diskon</span>
                 <span>- {{ $rp($transaction->discount) }}</span>
             </div>
         @endif
-        <div class="receipt-row receipt-row--bold">
-            <span>TOTAL BAYAR</span>
+        <div class="receipt-row receipt-row--total">
+            <span>TOTAL</span>
             <span>{{ $rp($transaction->total) }}</span>
         </div>
 
         @if ($transaction->payment_method === 'cash' && $transaction->cash_received !== null)
-            <div class="receipt-row">
+            <div class="receipt-row receipt-row--tight">
                 <span>Bayar</span>
                 <span>{{ $rp($transaction->cash_received) }}</span>
             </div>
-            <div class="receipt-row receipt-row--bold">
-                <span>Kembalian</span>
+            <div class="receipt-row receipt-row--tight">
+                <span>Kembali</span>
                 <span>{{ $rp($transaction->cash_change ?? 0) }}</span>
             </div>
         @endif
 
-        <div class="receipt-divider">--------------------------</div>
         <div class="receipt-center receipt-status">LUNAS</div>
-        <div class="receipt-divider">--------------------------</div>
 
         @if ($transaction->notes)
-            <div class="receipt-label">Catatan:</div>
-            <div class="receipt-text">{{ $transaction->notes }}</div>
-            <div class="receipt-divider">--------------------------</div>
+            <div class="receipt-sep"></div>
+            <div class="receipt-text receipt-text--muted"><strong>Cat:</strong> {{ $transaction->notes }}</div>
         @endif
 
-        <div class="receipt-center receipt-thanks">Terima kasih telah berkunjung.</div>
-        <div class="receipt-center receipt-muted">Sah tanpa tanda tangan.</div>
-        <div class="receipt-center receipt-muted">{{ $printedAt }}</div>
+        <div class="receipt-sep"></div>
+        <div class="receipt-center receipt-footer">Terima kasih · Sah tanpa tanda tangan</div>
+        <div class="receipt-center receipt-text--muted">{{ $printedAt }}</div>
     </article>
 @endsection
 

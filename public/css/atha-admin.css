@@ -2556,9 +2556,15 @@ a.dash-card-link .stat-card {
   opacity: 1;
 }
 
-.tx-cash-payment .tx-cash-change-row {
+.tx-cash-payment .tx-cash-change-row,
+.tx-cash-payment .tx-cash-change-display {
   background: var(--admin-surface-2);
   border: 1px solid var(--admin-border);
+  min-height: calc(1.5em + 0.75rem + 2px);
+}
+
+.tx-cash-payment .tx-cash-change-display {
+  pointer-events: none;
 }
 
 .tx-cash-payment #cash-change.text-success {
