@@ -3,11 +3,17 @@
         <div class="row g-3 mb-3">
             <div class="col-md-6">
                 <label for="name" class="form-label">Nama Role</label>
-                <input type="text" name="name" id="name"
-                    class="form-control form-control-clean @error('name') is-invalid @enderror"
-                    value="{{ old('name', $role->name ?? '') }}" required autofocus
-                    placeholder="Contoh: Kasir, Mekanik"
-                    {{ isset($role) && $role->name === 'Super Admin' ? 'readonly' : '' }}>
+                @if (isset($role) && $role->name === 'Super Admin')
+                    <input type="text" id="name"
+                        class="form-control form-control-clean"
+                        value="Super Admin" readonly tabindex="-1">
+                    <input type="hidden" name="name" value="Super Admin">
+                @else
+                    <input type="text" name="name" id="name"
+                        class="form-control form-control-clean @error('name') is-invalid @enderror"
+                        value="{{ old('name', isset($role) ? $role->name : '') }}" required autofocus
+                        placeholder="Contoh: Kasir, Mekanik">
+                @endif
                 @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             </div>
         </div>

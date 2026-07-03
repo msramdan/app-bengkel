@@ -41,6 +41,8 @@ class RoleController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->syncConfigPermissions();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
             'permissions' => ['nullable', 'array'],
@@ -71,6 +73,8 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role): RedirectResponse
     {
+        $this->syncConfigPermissions();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:roles,name,'.$role->id],
             'permissions' => ['nullable', 'array'],
@@ -104,5 +108,17 @@ class RoleController extends Controller
         return redirect()
             ->route('roles.index')
             ->with('success', 'Role berhasil dihapus.');
+    }
+
+    private function syncConfigPermissions(): void
+    {
+        $guard = config('auth.defaults.guard', 'web');
+
+        foreach (collect(config('permissions'))->pluck('access')->flatten()->unique() as $name) {
+            Permission::firstOrCreate([
+                'name' => $name,
+                'guard_name' => $guard,
+            ]);
+        }
     }
 }
