@@ -64,7 +64,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('workshop-services', WorkshopServiceController::class)->except(['create', 'edit']);
     Route::get('transactions/items/availability', [TransactionController::class, 'itemAvailability'])->name('transactions.items.availability');
     Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
-    Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
 
     Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show']);
 

@@ -9,4 +9,16 @@
             </a>
         @endif
     @endcan
+    @if ($status === 'completed')
+        @can('transaction edit')
+            <a href="{{ route('transactions.edit', $id) }}" class="btn btn-action btn-action-edit" title="Edit Transaksi">
+                <i class="fa fa-pencil-alt"></i>
+            </a>
+        @endcan
+        @can('transaction delete')
+            <button type="button" class="btn btn-action btn-action-delete" data-action="cancel-tx" data-id="{{ $id }}" data-no="{{ $transaction_no }}" title="Batalkan Transaksi">
+                <i class="fa fa-trash-alt"></i>
+            </button>
+        @endcan
+    @endif
 </div>

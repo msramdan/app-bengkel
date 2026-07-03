@@ -51,7 +51,7 @@ return [
     ],
     [
         'group' => 'Transaksi',
-        'access' => ['transaction view', 'transaction create'],
+        'access' => ['transaction view', 'transaction create', 'transaction edit', 'transaction delete'],
     ],
     [
         'group' => 'Pembelian',

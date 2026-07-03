@@ -29,7 +29,7 @@ class RoleAndPermissionSeeder extends Seeder
             'stock out view', 'stock out create',
             'stock report view',
             'workshop service view', 'workshop service create', 'workshop service edit', 'workshop service delete',
-            'transaction view', 'transaction create',
+            'transaction view', 'transaction create', 'transaction edit', 'transaction delete',
             'purchase view', 'purchase create',
             'financial report view',
             'manual income view', 'manual income create', 'manual income cancel',

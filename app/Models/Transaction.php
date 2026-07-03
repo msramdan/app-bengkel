@@ -11,13 +11,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'transaction_no', 'type', 'customer_id', 'customer_name', 'technician_id', 'user_id',
     'subtotal_items', 'subtotal_services', 'discount', 'total',
     'technician_commission', 'owner_service_share', 'owner_items_share', 'owner_total_share',
-    'status', 'notes', 'payment_method', 'bank_account_id',
+    'status', 'notes', 'payment_method', 'bank_account_id', 'cash_received', 'cash_change',
+    'cancelled_at', 'cancelled_by',
 ])]
 class Transaction extends Model
 {
     public function isCompleted(): bool
     {
         return $this->status === 'completed';
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
     }
 
     public function displayCustomerName(): string
@@ -49,6 +55,11 @@ class Transaction extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function cancelledByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(TransactionItem::class);
@@ -70,6 +81,9 @@ class Transaction extends Model
             'owner_service_share' => 'decimal:2',
             'owner_items_share' => 'decimal:2',
             'owner_total_share' => 'decimal:2',
+            'cash_received' => 'decimal:2',
+            'cash_change' => 'decimal:2',
+            'cancelled_at' => 'datetime',
         ];
     }
 }

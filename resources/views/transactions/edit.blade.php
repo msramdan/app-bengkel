@@ -1,91 +1,57 @@
 @extends('layouts.app')
 
-@section('title', 'Transaksi Baru')
+@section('title', 'Edit Transaksi')
 
 @section('content')
     @include('layouts.partials.page-hero', [
         'items' => [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Transaksi Penjualan', 'url' => route('transactions.index')],
-            ['label' => 'Baru'],
+            ['label' => 'Edit'],
         ],
-        'title' => 'Transaksi Baru',
-        'subtitle' => 'Penjualan sparepart, servis jasa, atau gabungan keduanya.',
+        'title' => 'Edit Transaksi',
+        'subtitle' => $transaction->transaction_no,
     ])
 
     <form id="transaction-form">
         @csrf
-        <div class="tx-order-tabs mb-3" id="tx-order-tabs">
-            <div class="tx-order-tabs-scroll">
-                <div class="tx-order-tabs-list" id="tx-order-tabs-list">
-                    <button type="button" class="tx-order-tab-add" id="btn-add-tab" title="Transaksi baru">
-                        <i class="bi bi-plus-lg"></i>
-                    </button>
-                </div>
+        @method('PUT')
+
+        <div class="data-panel mb-4">
+            <div class="data-panel-head">
+                <h2 class="data-panel-title"><i class="bi bi-info-circle me-1"></i> Informasi Transaksi</h2>
             </div>
-            <div class="form-hint-sm mt-2 mb-0">Pindah tab untuk layani pelanggan lain. Stok dicek saat bayar/submit.</div>
+            <div class="data-panel-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="text-muted small">No. Transaksi</div>
+                        <div class="fw-semibold">{{ $transaction->transaction_no }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">Pelanggan</div>
+                        <div class="fw-semibold">{{ $transaction->displayCustomerName() }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">Waktu</div>
+                        <div class="fw-semibold">{{ $transaction->created_at?->format('d/m/Y H:i') }}</div>
+                    </div>
+                </div>
+                <div class="form-hint-sm mt-2 mb-0">Pelanggan tidak dapat diubah. Koreksi stok dan laporan keuangan disesuaikan otomatis.</div>
+            </div>
         </div>
+
         <div class="row g-4 align-items-lg-start">
             <div class="col-lg-8">
-                <div class="data-panel mb-4" id="customer-panel">
-                    <div class="data-panel-head">
-                        <h2 class="data-panel-title"><i class="bi bi-person me-1"></i> Pelanggan</h2>
-                    </div>
-                    <div class="data-panel-body">
-                        <div class="mb-3">
-                            <label class="form-label">Pilih Pelanggan <span class="text-danger">*</span></label>
-                            <select id="customer_id" class="form-control-clean atha-searchable-select atha-select2-customer">
-                                <option value="">-- Pilih Pelanggan --</option>
-                                <option value="__umum__" data-is-member="0">{{ config('workshop.walk_in_customer_label', 'Umum') }} (pelanggan lewat)</option>
-                                <optgroup label="Pelanggan terdaftar">
-                                    @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}" data-is-member="{{ $customer->is_member ? '1' : '0' }}">
-                                            {{ $customer->code }} — {{ $customer->name }}
-                                        </option>
-                                    @endforeach
-                                </optgroup>
-                                <option value="__new__" data-is-member="0">+ Pelanggan baru...</option>
-                            </select>
-                            <div class="form-hint-sm">Pilih pelanggan terlebih dahulu sebelum menambah barang. Harga member hanya berlaku untuk barang.</div>
-                        </div>
-                        <div id="customer-type-remark" class="mb-3 d-none">
-                            <span class="text-muted small me-1">Tipe:</span>
-                            <span id="customer-type-badge" class="badge bg-secondary-subtle text-secondary">Pelanggan Biasa</span>
-                        </div>
-                        <div id="new-customer-fields" class="border rounded p-3 d-none customer-inline-panel">
-                            <div class="small fw-semibold mb-2"><i class="bi bi-person-plus me-1"></i> Data pelanggan baru</div>
-                            <div class="mb-2">
-                                <label class="form-label small mb-0" for="new_customer_name">Nama <span class="text-danger">*</span></label>
-                                <input type="text" id="new_customer_name" class="form-control form-control-clean" placeholder="Nama pelanggan" autocomplete="off">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small mb-0" for="new_customer_phone">Telepon</label>
-                                <input type="text" id="new_customer_phone" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label small mb-0" for="new_customer_address">Alamat</label>
-                                <input type="text" id="new_customer_address" class="form-control form-control-clean" placeholder="Opsional" autocomplete="off">
-                            </div>
-                            <div class="form-hint-sm mt-2 mb-0">Disimpan sebagai pelanggan biasa (bukan member) saat transaksi disimpan.</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="data-panel mb-4" id="items-section">
+                <div class="data-panel mb-4">
                     <div class="data-panel-head">
                         <h2 class="data-panel-title"><i class="bi bi-box-seam me-1"></i> Barang / Sparepart</h2>
                     </div>
                     <div class="data-panel-body">
-                        <div id="items-section-lock" class="items-section-empty text-center text-muted py-4 px-3">
-                            <i class="bi bi-person-check fs-4 d-block mb-2"></i>
-                            <div class="fw-medium">Pilih pelanggan terlebih dahulu</div>
-                            <div class="small">Barang hanya bisa ditambahkan setelah pelanggan dipilih.</div>
-                        </div>
-                        <div id="items-add-form" class="stock-cart-add border rounded p-3 mb-3 d-none">
+                        <div class="stock-cart-add border rounded p-3 mb-3">
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-7">
                                     <label class="form-label small mb-0" for="item_select">Pilih Barang</label>
-                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select" disabled>
+                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select">
                                         <option value="">-- Pilih Barang --</option>
                                         @foreach ($items as $item)
                                             <option value="{{ $item->id }}"
@@ -101,16 +67,13 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small mb-0" for="item_qty">Qty</label>
-                                    <input type="number" id="item_qty" class="form-control form-control-clean cart-add-control" min="1" placeholder="0" disabled>
+                                    <input type="number" id="item_qty" class="form-control form-control-clean cart-add-control" min="1" placeholder="0">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label small mb-0 cart-add-action-label" aria-hidden="true">Aksi</label>
-                                    <button type="button" class="btn btn-outline-primary w-100 cart-add-btn" id="btn-add-item" disabled>
+                                    <button type="button" class="btn btn-outline-primary w-100 cart-add-btn" id="btn-add-item">
                                         <i class="bi bi-cart-plus"></i>
                                     </button>
-                                </div>
-                                <div class="col-12">
-                                    <div class="cart-add-hint" id="item-hint"></div>
                                 </div>
                             </div>
                         </div>
@@ -127,7 +90,7 @@
                                 </thead>
                                 <tbody id="items-cart-body"></tbody>
                             </table>
-                            <div id="items-cart-empty" class="text-center text-muted py-3 small">Belum ada barang.</div>
+                            <div id="items-cart-empty" class="text-center text-muted py-3 small d-none">Belum ada barang.</div>
                         </div>
                     </div>
                 </div>
@@ -178,7 +141,7 @@
                                 </thead>
                                 <tbody id="services-cart-body"></tbody>
                             </table>
-                            <div id="services-cart-empty" class="text-center text-muted py-3 small">Belum ada jasa servis.</div>
+                            <div id="services-cart-empty" class="text-center text-muted py-3 small d-none">Belum ada jasa servis.</div>
                         </div>
                     </div>
                 </div>
@@ -198,11 +161,10 @@
                                     <option value="{{ $technician->id }}" data-commission-percent="{{ (float) $technician->commission_percent }}">{{ $technician->code }} — {{ $technician->name }} ({{ number_format((float) $technician->commission_percent, 0) }}%)</option>
                                 @endforeach
                             </select>
-                            <div class="form-hint-sm">Wajib jika transaksi memiliki jasa servis.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Diskon (Rp)</label>
-                            <input type="number" name="discount" id="discount" class="form-control form-control-clean" min="0" value="0" step="0.01">
+                            <input type="number" name="discount" id="discount" class="form-control form-control-clean" min="0" step="0.01">
                         </div>
 
                         @include('layouts.partials.payment-fields', ['bankAccounts' => $bankAccounts])
@@ -241,13 +203,13 @@
                         </div>
 
                         <div class="alert alert-light border py-2 px-3 small mb-3 atha-summary-box">
-                            <div class="fw-semibold mb-1"><i class="bi bi-percent me-1"></i> Pembagian (sesuai % komisi teknisi)</div>
+                            <div class="fw-semibold mb-1"><i class="bi bi-percent me-1"></i> Pembagian komisi</div>
                             <div class="d-flex justify-content-between">
-                                <span>Komisi teknisi (<span id="label-tech-percent">{{ (int) config('workshop.default_technician_commission_percent', 20) }}</span>% jasa)</span>
+                                <span>Komisi teknisi (<span id="label-tech-percent">0</span>%)</span>
                                 <span id="sum-tech-commission" class="fw-medium">Rp 0</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <span>Bagian owner jasa (<span id="label-owner-percent">{{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }}</span>%)</span>
+                                <span>Bagian owner jasa (<span id="label-owner-percent">0</span>%)</span>
                                 <span id="sum-owner-service">Rp 0</span>
                             </div>
                             <div class="d-flex justify-content-between">
@@ -262,8 +224,8 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="btn-submit" disabled>
-                                <i class="bi bi-check-lg"></i> Bayar & Selesai
+                            <button type="submit" class="btn btn-primary btn-lg" id="btn-submit">
+                                <i class="bi bi-check-lg"></i> Simpan Perubahan
                             </button>
                             <a href="{{ route('transactions.index') }}" class="btn btn-light-action">Kembali</a>
                         </div>
@@ -276,17 +238,38 @@
 
 @push('js')
     <script src="{{ asset('js/payment-fields.js') }}"></script>
-    <script src="{{ asset('js/transaction-cart.js') }}"></script>
+    <script src="{{ asset('js/transaction-edit.js') }}"></script>
     <script>
         AthaPaymentFields.init();
-        AthaTransactionCart.init({
-            storeUrl: '{{ route('transactions.store') }}',
-            itemAvailabilityUrl: '{{ route('transactions.items.availability') }}',
-            showUrlTemplate: '{{ route('transactions.show', '__ID__') }}',
+        AthaTransactionEdit.init({
+            updateUrl: '{{ route('transactions.update', $transaction) }}',
             redirectUrl: '{{ route('transactions.index') }}',
-            techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
-            ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},
+            itemAvailabilityUrl: '{{ route('transactions.items.availability') }}',
             defaultTechPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
+            stockCredit: @json($stockCredit),
+            usesMemberPricing: @json((bool) $transaction->customer?->is_member),
+            initial: {
+                technician_id: @json($transaction->technician_id),
+                discount: {{ (float) $transaction->discount }},
+                notes: @json($transaction->notes),
+                payment_method: @json($transaction->payment_method),
+                bank_account_id: @json($transaction->bank_account_id),
+                amount_paid: @json($transaction->cash_received),
+                items: @json($transaction->items->map(fn ($line) => [
+                    'item_id' => $line->item_id,
+                    'code' => $line->item_code,
+                    'name' => $line->item_name,
+                    'quantity' => (int) $line->quantity,
+                    'unit_price' => (float) $line->unit_price,
+                ])),
+                services: @json($transaction->serviceLines->map(fn ($line) => [
+                    'workshop_service_id' => $line->workshop_service_id,
+                    'code' => $line->service_code,
+                    'name' => $line->service_name,
+                    'quantity' => (int) $line->quantity,
+                    'unit_price' => (float) $line->unit_price,
+                ])),
+            },
             items: @json($items),
             services: @json($services),
         });

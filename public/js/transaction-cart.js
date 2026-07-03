@@ -223,6 +223,7 @@
                     technicianId: '',
                     paymentMethod: $('#payment_method').val() || 'cash',
                     bankAccountId: '',
+                    cashAmountPaid: '',
                 };
             }
 
@@ -272,6 +273,7 @@
                 tab.technicianId = $('#technician_id').val() || '';
                 tab.paymentMethod = $('#payment_method').val() || 'cash';
                 tab.bankAccountId = $('#bank_account_id').val() || '';
+                tab.cashAmountPaid = $('#amount_paid').val() || '';
 
                 if (hasCustomerSelected() || itemCart.length || serviceCart.length) {
                     tab.label = deriveTabLabelFromForm();
@@ -287,6 +289,7 @@
                 $('#customer_id').val('').trigger('change');
                 $('#new_customer_name, #new_customer_phone, #new_customer_address').val('');
                 $('#payment_method').val('cash').trigger('change');
+                $('#amount_paid').val('');
                 $('#bank_account_id').val('').trigger('change');
             }
 
@@ -317,6 +320,7 @@
                 if (tab.bankAccountId) {
                     $('#bank_account_id').val(tab.bankAccountId).trigger('change');
                 }
+                $('#amount_paid').val(tab.cashAmountPaid || '');
 
                 toggleNewCustomerFields();
                 updateCustomerRemark();
@@ -507,6 +511,25 @@
                     return false;
                 }
 
+                if (requirePayment && $('#payment_method').val() === 'cash') {
+                    const subItems = itemCart.reduce(function (s, l) { return s + l.subtotal; }, 0);
+                    const subServices = serviceCart.reduce(function (s, l) { return s + l.subtotal; }, 0);
+                    const gross = subItems + subServices;
+                    let discount = parseFloat($('#discount').val()) || 0;
+                    discount = Math.max(0, Math.min(discount, gross));
+                    const total = gross - discount;
+                    const cash = window.AthaPaymentFields.getCashPayment(total);
+
+                    if (!cash.paid || cash.paid < total) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Uang diterima kurang',
+                            text: 'Total ' + formatRp(total) + '. Masukkan uang dari pelanggan minimal sebesar total.',
+                        });
+                        return false;
+                    }
+                }
+
                 return true;
             }
 
@@ -615,13 +638,19 @@
                 $('#sum-owner-items').text(formatRp(ownerItems));
                 $('#sum-owner-total').text(formatRp(ownerTotal));
 
+                if (window.AthaPaymentFields) {
+                    window.AthaPaymentFields.updateCashChange(total);
+                }
+
                 const hasLines = itemCart.length || serviceCart.length;
                 const hasCustomer = hasCustomerSelected();
                 const needsTech = serviceCart.length > 0;
                 const hasTech = !!$('#technician_id').val();
                 const paymentOk = $('#payment_method').val() !== 'transfer' || !!$('#bank_account_id').val();
+                const cashOk = $('#payment_method').val() !== 'cash'
+                    || (window.AthaPaymentFields && window.AthaPaymentFields.getCashPayment(total).sufficient);
 
-                $submit.prop('disabled', !(hasLines && hasCustomer && (!needsTech || hasTech) && paymentOk));
+                $submit.prop('disabled', !(hasLines && hasCustomer && (!needsTech || hasTech) && paymentOk && cashOk));
             }
 
             function updateActiveTabLabel() {
@@ -653,7 +682,8 @@
                 updateSummary();
             });
 
-            $('#customer_id, #technician_id, #discount, #payment_method, #bank_account_id').on('change input', updateSummary);
+            $('#customer_id, #technician_id, #discount, #payment_method, #bank_account_id, #amount_paid').on('change input', updateSummary);
+            $(document).on('atha:payment-fields-changed', updateSummary);
 
             $('#item_select').on('change', updateItemHint);
 
@@ -884,6 +914,9 @@
                 const payload = buildPayload();
                 payload.payment_method = $('#payment_method').val();
                 payload.bank_account_id = $('#bank_account_id').val() || null;
+                if ($('#payment_method').val() === 'cash') {
+                    payload.amount_paid = $('#amount_paid').val();
+                }
 
                 function handleSubmitSuccess(res) {
                     Swal.fire({

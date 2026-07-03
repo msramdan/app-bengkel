@@ -46,18 +46,135 @@ class TransactionService
             );
 
             $transactionNo = $this->nextTransactionNo($prepared['type']);
+            $cashPayment = $this->resolveCashPayment($payload, (float) $prepared['financials']['total'], $payment['payment_method']);
 
             $transaction = Transaction::create([
                 ...$this->transactionAttributes($prepared, $userId, $transactionNo),
                 'status' => 'completed',
                 'payment_method' => $payment['payment_method'],
                 'bank_account_id' => $payment['bank_account_id'],
+                'cash_received' => $cashPayment['cash_received'],
+                'cash_change' => $cashPayment['cash_change'],
             ]);
 
             $this->deductStockForLines($prepared['resolved_items'], $userId, $transactionNo);
             $this->persistLines($transaction, $prepared['resolved_items'], $prepared['resolved_services']);
 
             return $transaction->load(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount']);
+        });
+    }
+
+    /**
+     * @param  array{
+     *   technician_id?: int|null,
+     *   discount?: float,
+     *   notes?: string|null,
+     *   payment_method?: string,
+     *   bank_account_id?: int|null,
+     *   amount_paid?: float|null,
+     *   items?: array<int, array{item_id: int, quantity: int, unit_price?: float}>,
+     *   services?: array<int, array{workshop_service_id: int, quantity: int, unit_price?: float}>
+     * }  $payload
+     */
+    public function update(Transaction $transaction, array $payload, int $userId): Transaction
+    {
+        return DB::transaction(function () use ($transaction, $payload, $userId) {
+            $locked = Transaction::query()->whereKey($transaction->id)->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->isCompleted()) {
+                throw new InvalidArgumentException('Transaksi tidak dapat diubah.');
+            }
+
+            $locked->load(['items', 'serviceLines']);
+
+            $previousItemQty = $locked->items
+                ->mapWithKeys(fn (TransactionItem $line) => [(int) $line->item_id => (int) $line->quantity])
+                ->all();
+
+            $editPayload = [
+                'customer_mode' => $locked->customer_id ? 'existing' : 'umum',
+                'customer_id' => $locked->customer_id,
+                'technician_id' => $payload['technician_id'] ?? $locked->technician_id,
+                'discount' => $payload['discount'] ?? $locked->discount,
+                'notes' => array_key_exists('notes', $payload) ? $payload['notes'] : $locked->notes,
+                'items' => $payload['items'] ?? [],
+                'services' => $payload['services'] ?? [],
+            ];
+
+            $prepared = $this->preparePayload($editPayload, true, $previousItemQty);
+
+            $payment = $this->paymentResolver->resolve(
+                $payload['payment_method'] ?? $locked->payment_method,
+                array_key_exists('bank_account_id', $payload)
+                    ? ($payload['bank_account_id'] !== null ? (int) $payload['bank_account_id'] : null)
+                    : $locked->bank_account_id,
+            );
+
+            $cashPayment = $this->resolveCashPayment(
+                $payload,
+                (float) $prepared['financials']['total'],
+                $payment['payment_method'],
+            );
+
+            $this->applyStockDeltas(
+                $previousItemQty,
+                $prepared['resolved_items'],
+                $userId,
+                $locked->transaction_no,
+            );
+
+            $locked->update([
+                ...$this->transactionAttributes($prepared, $userId, $locked->transaction_no, $locked),
+                'type' => $prepared['type'],
+                'payment_method' => $payment['payment_method'],
+                'bank_account_id' => $payment['bank_account_id'],
+                'cash_received' => $cashPayment['cash_received'],
+                'cash_change' => $cashPayment['cash_change'],
+            ]);
+
+            $locked->items()->delete();
+            $locked->serviceLines()->delete();
+            $this->persistLines($locked, $prepared['resolved_items'], $prepared['resolved_services']);
+
+            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount']);
+        });
+    }
+
+    public function cancel(Transaction $transaction, int $userId): Transaction
+    {
+        return DB::transaction(function () use ($transaction, $userId) {
+            $locked = Transaction::query()->whereKey($transaction->id)->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->isCompleted()) {
+                throw new InvalidArgumentException('Transaksi tidak dapat dibatalkan.');
+            }
+
+            $locked->load('items');
+
+            if ($locked->items->isNotEmpty()) {
+                $stockLines = $locked->items
+                    ->map(fn (TransactionItem $line) => [
+                        'item_id' => (int) $line->item_id,
+                        'quantity' => (int) $line->quantity,
+                    ])
+                    ->values()
+                    ->all();
+
+                $this->stockService->stockInBatch(
+                    $stockLines,
+                    $userId,
+                    $locked->transaction_no,
+                    'Rollback stok pembatalan transaksi '.$locked->transaction_no,
+                );
+            }
+
+            $locked->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancelled_by' => $userId,
+            ]);
+
+            return $locked->fresh(['customer', 'technician', 'user', 'items', 'serviceLines', 'bankAccount', 'cancelledByUser']);
         });
     }
 
@@ -75,7 +192,7 @@ class TransactionService
      *   financials: array<string, float>
      * }
      */
-    private function preparePayload(array $payload, bool $requireTechnicianForServices): array
+    private function preparePayload(array $payload, bool $requireTechnicianForServices, array $previousItemQty = []): array
     {
         $itemLines = $payload['items'] ?? [];
         $serviceLines = $payload['services'] ?? [];
@@ -108,7 +225,7 @@ class TransactionService
             }
         }
 
-        $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing);
+        $resolvedItems = $this->resolveItemLines($itemLines, $useMemberPricing, $previousItemQty);
         $resolvedServices = $this->resolveServiceLines($serviceLines);
 
         $subtotalItems = (float) $resolvedItems->sum('subtotal');
@@ -173,6 +290,30 @@ class TransactionService
         return CodeGenerator::nextFromTable($prefix, 'transactions', 'transaction_no');
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{cash_received: float|null, cash_change: float|null}
+     */
+    private function resolveCashPayment(array $payload, float $total, string $paymentMethod): array
+    {
+        if ($paymentMethod !== 'cash') {
+            return ['cash_received' => null, 'cash_change' => null];
+        }
+
+        $received = isset($payload['amount_paid'])
+            ? round((float) $payload['amount_paid'], 2)
+            : round($total, 2);
+
+        if ($received < $total) {
+            throw new InvalidArgumentException('Uang diterima kurang dari total bayar.');
+        }
+
+        return [
+            'cash_received' => $received,
+            'cash_change' => round($received - $total, 2),
+        ];
+    }
+
     private function deductStockForLines(Collection $resolvedItems, int $userId, string $transactionNo): void
     {
         if ($resolvedItems->isEmpty()) {
@@ -209,7 +350,53 @@ class TransactionService
         }
     }
 
-    private function resolveItemLines(array $lines, bool $useMemberPricing = false): Collection
+    /**
+     * @param  array<int, int>  $previousItemQty
+     */
+    private function applyStockDeltas(array $previousItemQty, Collection $resolvedItems, int $userId, string $transactionNo): void
+    {
+        $newQtyByItem = $resolvedItems
+            ->mapWithKeys(fn (array $line) => [(int) $line['item_id'] => (int) $line['quantity']])
+            ->all();
+
+        $allItemIds = array_unique(array_merge(array_keys($previousItemQty), array_keys($newQtyByItem)));
+        sort($allItemIds);
+
+        $stockOutLines = [];
+        $stockInLines = [];
+
+        foreach ($allItemIds as $itemId) {
+            $oldQty = (int) ($previousItemQty[$itemId] ?? 0);
+            $newQty = (int) ($newQtyByItem[$itemId] ?? 0);
+            $delta = $newQty - $oldQty;
+
+            if ($delta > 0) {
+                $stockOutLines[] = ['item_id' => $itemId, 'quantity' => $delta];
+            } elseif ($delta < 0) {
+                $stockInLines[] = ['item_id' => $itemId, 'quantity' => abs($delta)];
+            }
+        }
+
+        if (! empty($stockOutLines)) {
+            $this->stockService->stockOutBatch(
+                $stockOutLines,
+                $userId,
+                $transactionNo,
+                'Stok keluar koreksi transaksi '.$transactionNo,
+            );
+        }
+
+        if (! empty($stockInLines)) {
+            $this->stockService->stockInBatch(
+                $stockInLines,
+                $userId,
+                $transactionNo,
+                'Stok kembali koreksi transaksi '.$transactionNo,
+            );
+        }
+    }
+
+    private function resolveItemLines(array $lines, bool $useMemberPricing = false, array $previousItemQty = []): Collection
     {
         $merged = [];
 
@@ -261,9 +448,10 @@ class TransactionService
                 throw new InvalidArgumentException("Barang \"{$item->name}\" tidak aktif.");
             }
 
-            if ($item->stock < $qty) {
+            if ($item->stock + (int) ($previousItemQty[$itemId] ?? 0) < $qty) {
+                $available = (int) $item->stock + (int) ($previousItemQty[$itemId] ?? 0);
                 throw new InvalidArgumentException(
-                    "Stok \"{$item->name}\" tidak mencukupi. Tersedia: {$item->stock}, dibutuhkan: {$qty}."
+                    "Stok \"{$item->name}\" tidak mencukupi. Tersedia: {$available}, dibutuhkan: {$qty}."
                 );
             }
 

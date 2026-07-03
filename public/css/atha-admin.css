@@ -2556,6 +2556,19 @@ a.dash-card-link .stat-card {
   opacity: 1;
 }
 
+.tx-cash-payment .tx-cash-change-row {
+  background: var(--admin-surface-2);
+  border: 1px solid var(--admin-border);
+}
+
+.tx-cash-payment #cash-change.text-success {
+  color: #198754 !important;
+}
+
+.tx-cash-payment #cash-change.text-danger {
+  color: #dc3545 !important;
+}
+
 /* ══════════════════════════════════════
    DARK MODE — komponen & Bootstrap fixes
    ══════════════════════════════════════ */

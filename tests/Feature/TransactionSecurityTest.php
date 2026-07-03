@@ -105,6 +105,7 @@ class TransactionSecurityTest extends TestCase
                 'customer_mode' => 'existing',
                 'customer_id' => $this->customer->id,
                 'payment_method' => 'cash',
+                'amount_paid' => 100000,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ]);
 
@@ -133,6 +134,7 @@ class TransactionSecurityTest extends TestCase
                 'customer_mode' => 'existing',
                 'customer_id' => 99999,
                 'payment_method' => 'cash',
+                'amount_paid' => 100000,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ])
             ->assertStatus(422);
@@ -154,6 +156,7 @@ class TransactionSecurityTest extends TestCase
                 'payment_method' => 'cash',
                 'technician_id' => $inactive->id,
                 'services' => [['workshop_service_id' => $this->service->id, 'quantity' => 1]],
+                'amount_paid' => 100000,
             ])
             ->assertStatus(422);
     }
@@ -194,6 +197,7 @@ class TransactionSecurityTest extends TestCase
             ->postJson(route('transactions.store'), [
                 'customer_mode' => 'umum',
                 'payment_method' => 'cash',
+                'amount_paid' => 100000,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ])
             ->assertOk();
@@ -215,6 +219,7 @@ class TransactionSecurityTest extends TestCase
                 'customer_mode' => 'new',
                 'new_customer' => ['name' => 'Pelanggan Baru Inline', 'phone' => '0811111111'],
                 'payment_method' => 'cash',
+                'amount_paid' => 100000,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ])
             ->assertOk();
@@ -230,6 +235,7 @@ class TransactionSecurityTest extends TestCase
             ->postJson(route('transactions.store'), [
                 'customer_mode' => 'umum',
                 'payment_method' => 'cash',
+                'amount_paid' => 100000,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ]);
 
@@ -238,7 +244,7 @@ class TransactionSecurityTest extends TestCase
         $this->actingAs($this->kasir)
             ->get(route('transactions.invoice', $transactionId))
             ->assertOk()
-            ->assertSee('Nota Penjualan')
+            ->assertSee('NOTA PENJUALAN')
             ->assertSee($response->json('data.transaction_no'))
             ->assertSee('Umum');
     }

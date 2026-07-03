@@ -24,6 +24,8 @@ class TransactionController extends Controller
     {
         $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice', 'itemAvailability']);
         $this->middleware('permission:transaction create')->only(['create', 'store']);
+        $this->middleware('permission:transaction edit')->only(['edit', 'update']);
+        $this->middleware('permission:transaction delete')->only(['destroy']);
     }
 
     public function index(): View|JsonResponse
@@ -161,6 +163,74 @@ class TransactionController extends Controller
         return view('transactions.invoice', compact('transaction'));
     }
 
+    public function edit(Transaction $transaction): View
+    {
+        abort_unless($transaction->isCompleted(), 404);
+
+        $transaction->load(['items', 'serviceLines', 'customer', 'technician', 'bankAccount']);
+
+        return view('transactions.edit', [
+            'transaction' => $transaction,
+            'technicians' => Technician::query()->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name', 'commission_percent']),
+            'items' => Item::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'stock', 'selling_price', 'member_price']),
+            'services' => WorkshopService::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'price']),
+            'bankAccounts' => \App\Models\BankAccount::query()->where('is_active', true)->orderBy('bank_name')->get(),
+            'stockCredit' => $transaction->items
+                ->mapWithKeys(fn ($line) => [(int) $line->item_id => (int) $line->quantity])
+                ->all(),
+        ]);
+    }
+
+    public function update(Request $request, Transaction $transaction): JsonResponse|RedirectResponse
+    {
+        abort_unless($transaction->isCompleted(), 404);
+
+        $validated = $this->validateTransactionUpdatePayload($request);
+
+        try {
+            $updated = $this->transactionService->update($transaction, $validated, (int) auth()->id());
+        } catch (InvalidArgumentException $e) {
+            return $this->modalError($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return $this->modalSuccess(
+                'Transaksi berhasil diperbarui.',
+                ['transaction_no' => $updated->transaction_no, 'id' => $updated->id]
+            );
+        }
+
+        return redirect()
+            ->route('transactions.index')
+            ->with('success', 'Transaksi '.$updated->transaction_no.' berhasil diperbarui.');
+    }
+
+    public function destroy(Request $request, Transaction $transaction): JsonResponse|RedirectResponse
+    {
+        try {
+            $cancelled = $this->transactionService->cancel($transaction, (int) $request->user()->id);
+        } catch (InvalidArgumentException $e) {
+            return $this->modalError($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return $this->modalSuccess(
+                'Transaksi berhasil dibatalkan.',
+                ['transaction_no' => $cancelled->transaction_no, 'id' => $cancelled->id]
+            );
+        }
+
+        return redirect()
+            ->route('transactions.index')
+            ->with('success', 'Transaksi '.$cancelled->transaction_no.' berhasil dibatalkan.');
+    }
+
     private function validateTransactionPayload(Request $request, bool $requirePayment): array
     {
         $rules = [
@@ -186,7 +256,30 @@ class TransactionController extends Controller
         if ($requirePayment) {
             $rules['payment_method'] = ['required', 'in:cash,qris,transfer'];
             $rules['bank_account_id'] = ['nullable', 'required_if:payment_method,transfer', 'exists:bank_accounts,id'];
+            $rules['amount_paid'] = ['nullable', 'numeric', 'min:0', 'required_if:payment_method,cash'];
         }
+
+        return $request->validate($rules);
+    }
+
+    private function validateTransactionUpdatePayload(Request $request): array
+    {
+        $rules = [
+            'technician_id' => ['nullable', 'required_with:services', 'exists:technicians,id'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
+            'items' => ['nullable', 'array'],
+            'items.*.item_id' => ['required_with:items', 'exists:items,id'],
+            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'services' => ['nullable', 'array'],
+            'services.*.workshop_service_id' => ['required_with:services', 'exists:workshop_services,id'],
+            'services.*.quantity' => ['required_with:services', 'integer', 'min:1'],
+            'services.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['required', 'in:cash,qris,transfer'],
+            'bank_account_id' => ['nullable', 'required_if:payment_method,transfer', 'exists:bank_accounts,id'],
+            'amount_paid' => ['nullable', 'numeric', 'min:0', 'required_if:payment_method,cash'],
+        ];
 
         return $request->validate($rules);
     }

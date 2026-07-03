@@ -110,6 +110,8 @@
                 showModal: '#show-modal',
                 showUrl: '',
                 invoiceUrl: '',
+                cancelUrlTemplate: '',
+                canCancel: false,
                 techPercent: 80,
                 ownerPercent: 20,
             }, options);
@@ -117,6 +119,56 @@
             const $table = $(settings.table);
             const $showModal = $(settings.showModal);
             const showModal = bootstrap.Modal.getOrCreateInstance($showModal[0], { backdrop: 'static' });
+            const dataTable = $table.DataTable ? $table.DataTable() : null;
+
+            if (settings.canCancel && settings.cancelUrlTemplate) {
+                $table.on('click', '[data-action="cancel-tx"]', function () {
+                    const id = $(this).data('id');
+                    const no = $(this).data('no') || id;
+
+                    Swal.fire({
+                        title: 'Batalkan transaksi?',
+                        html: 'Transaksi <strong>' + escapeHtml(no) + '</strong> akan dibatalkan.<br>Stok barang dikembalikan dan nilai transaksi dihapus dari laporan keuangan.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, batalkan',
+                        cancelButtonText: 'Tidak',
+                        confirmButtonColor: '#dc3545',
+                    }).then(function (result) {
+                        if (!result.isConfirmed) {
+                            return;
+                        }
+
+                        $.ajax({
+                            url: settings.cancelUrlTemplate.replace('__ID__', id),
+                            type: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                            },
+                            data: { _method: 'DELETE' },
+                            success: function (res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: res.message || 'Transaksi dibatalkan.',
+                                    timer: 1600,
+                                    showConfirmButton: false,
+                                });
+                                if (dataTable) {
+                                    dataTable.ajax.reload(null, false);
+                                }
+                            },
+                            error: function (xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: xhr.responseJSON?.message || 'Gagal membatalkan transaksi.',
+                                });
+                            },
+                        });
+                    });
+                });
+            }
 
             $table.on('click', '[data-action="show-tx"]', function () {
                 const id = $(this).data('id');
@@ -132,10 +184,12 @@
                 $.get(settings.showUrl.replace('__ID__', id), function (res) {
                     const d = res.data;
 
-                    if (settings.invoiceUrl) {
+                    if (settings.invoiceUrl && d.status === 'completed') {
                         $printBtn
                             .attr('href', settings.invoiceUrl.replace('__ID__', id))
                             .removeClass('d-none');
+                    } else {
+                        $printBtn.addClass('d-none').attr('href', '#');
                     }
 
                     $title.text(d.transaction_no);
@@ -204,6 +258,15 @@
                                 <span>Total</span>
                                 <span>${formatRp(d.total)}</span>
                             </div>
+                            ${d.payment_method === 'cash' && d.cash_received != null ? `
+                            <div class="tx-detail-summary__row">
+                                <span>Uang diterima</span>
+                                <span>${formatRp(d.cash_received)}</span>
+                            </div>
+                            <div class="tx-detail-summary__row">
+                                <span>Kembalian</span>
+                                <span>${formatRp(d.cash_change || 0)}</span>
+                            </div>` : ''}
                         </section>
 
                         <section class="tx-detail-commission">

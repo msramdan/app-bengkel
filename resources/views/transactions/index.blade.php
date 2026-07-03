@@ -100,6 +100,8 @@
             showModal: '#show-modal',
             showUrl: '{{ route('transactions.show', '__ID__') }}',
             invoiceUrl: '{{ route('transactions.invoice', '__ID__') }}',
+            cancelUrlTemplate: '{{ route('transactions.destroy', '__ID__') }}',
+            canCancel: @json(auth()->user()->can('transaction delete')),
             techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
             ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},
         });

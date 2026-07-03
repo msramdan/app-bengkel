@@ -307,4 +307,35 @@ class TransactionServiceTest extends TestCase
         $this->assertSame(25000.0, (float) $tx->subtotal_items);
         $this->assertSame(25000.0, (float) $tx->items->first()->unit_price);
     }
+
+    #[Test]
+    public function cash_transaction_stores_received_amount_and_change(): void
+    {
+        $tx = app(TransactionService::class)->create([
+            'customer_mode' => 'existing',
+            'customer_id' => $this->customer->id,
+            'payment_method' => 'cash',
+            'amount_paid' => 100000,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ], $this->user->id);
+
+        $this->assertSame(25000.0, (float) $tx->total);
+        $this->assertSame(100000.0, (float) $tx->cash_received);
+        $this->assertSame(75000.0, (float) $tx->cash_change);
+    }
+
+    #[Test]
+    public function cash_transaction_rejects_insufficient_amount_paid(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Uang diterima kurang dari total bayar');
+
+        app(TransactionService::class)->create([
+            'customer_mode' => 'existing',
+            'customer_id' => $this->customer->id,
+            'payment_method' => 'cash',
+            'amount_paid' => 10000,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ], $this->user->id);
+    }
 }
