@@ -184,6 +184,20 @@ class TransactionController extends Controller
             'stockCredit' => $transaction->items
                 ->mapWithKeys(fn ($line) => [(int) $line->item_id => (int) $line->quantity])
                 ->all(),
+            'initialItems' => $transaction->items->map(fn ($line) => [
+                'item_id' => $line->item_id,
+                'code' => $line->item_code,
+                'name' => $line->item_name,
+                'quantity' => (int) $line->quantity,
+                'unit_price' => (float) $line->unit_price,
+            ])->values(),
+            'initialServices' => $transaction->serviceLines->map(fn ($line) => [
+                'workshop_service_id' => $line->workshop_service_id,
+                'code' => $line->service_code,
+                'name' => $line->service_name,
+                'quantity' => (int) $line->quantity,
+                'unit_price' => (float) $line->unit_price,
+            ])->values(),
         ]);
     }
 
