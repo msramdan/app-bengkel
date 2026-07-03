@@ -43,7 +43,7 @@
         <div class="form-aside-card-body">
             <h3 class="form-aside-title"><i class="bi bi-grid me-2"></i>Grup Permission</h3>
             <ul class="form-aside-roles list-unstyled">
-                @foreach (config('permissions') as $group)
+                @foreach (\App\Support\PermissionGroups::all() as $group)
                     <li>
                         <span class="role-dot"></span>
                         {{ $group['group'] }}

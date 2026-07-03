@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\PermissionGroups;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use PHPUnit\Framework\Attributes\Test;
@@ -30,9 +31,7 @@ class RoleManagementTest extends TestCase
 
         $role = Role::findByName('Kasir');
 
-        $permissions = collect(config('permissions'))
-            ->pluck('access')
-            ->flatten()
+        $permissions = collect(PermissionGroups::names())
             ->filter(fn (string $name) => str_starts_with($name, 'transaction'))
             ->values()
             ->all();

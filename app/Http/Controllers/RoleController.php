@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\PermissionGroups;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,6 +37,8 @@ class RoleController extends Controller
 
     public function create(): View
     {
+        $this->syncConfigPermissions();
+
         return view('roles.create');
     }
 
@@ -66,6 +69,7 @@ class RoleController extends Controller
 
     public function edit(Role $role): View
     {
+        $this->syncConfigPermissions();
         $role->load('permissions');
 
         return view('roles.edit', compact('role'));
@@ -114,7 +118,7 @@ class RoleController extends Controller
     {
         $guard = config('auth.defaults.guard', 'web');
 
-        foreach (collect(config('permissions'))->pluck('access')->flatten()->unique() as $name) {
+        foreach (PermissionGroups::names() as $name) {
             Permission::firstOrCreate([
                 'name' => $name,
                 'guard_name' => $guard,

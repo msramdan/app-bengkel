@@ -21,7 +21,7 @@
         <label class="form-label d-block mb-2">Permission</label>
         @error('permissions')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
         <div class="row g-3">
-            @foreach (config('permissions') as $group)
+            @foreach (\App\Support\PermissionGroups::all() as $group)
                 <div class="col-md-6 col-lg-4">
                     <div class="perm-group">
                         <h6 class="perm-group-title">{{ $group['group'] }}</h6>
