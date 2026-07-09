@@ -104,6 +104,45 @@ class ItemExcelService
         $sheet = $spreadsheet->getSheetByName(self::IMPORT_SHEET)
             ?? $spreadsheet->getActiveSheet();
 
+        return $this->processImportRows($sheet, [
+            'create_missing_masters' => false,
+            'max_rows' => self::IMPORT_MAX_ROWS,
+        ]);
+    }
+
+    /**
+     * @return array{created: int, skipped: int, errors: array<int, string>}
+     */
+    public function seedFromPath(string $path): array
+    {
+        if (! is_file($path)) {
+            return [
+                'created' => 0,
+                'skipped' => 0,
+                'errors' => ["File tidak ditemukan: {$path}"],
+            ];
+        }
+
+        $spreadsheet = IOFactory::load($path);
+        $sheet = $spreadsheet->getSheetByName(self::IMPORT_SHEET)
+            ?? $spreadsheet->getActiveSheet();
+
+        return $this->processImportRows($sheet, [
+            'create_missing_masters' => true,
+            'max_rows' => null,
+            'default_unit_label' => 'Pieces (pcs)',
+        ]);
+    }
+
+    /**
+     * @param  array{create_missing_masters: bool, max_rows?: ?int, default_unit_label?: string}  $options
+     * @return array{created: int, skipped: int, errors: array<int, string>}
+     */
+    private function processImportRows(Worksheet $sheet, array $options): array
+    {
+        $createMissingMasters = $options['create_missing_masters'];
+        $defaultUnitLabel = $options['default_unit_label'] ?? null;
+
         $categories = ItemCategory::query()->orderBy('name')->get()->keyBy(
             fn (ItemCategory $c) => mb_strtolower(trim($c->name))
         );
@@ -113,7 +152,12 @@ class ItemExcelService
         $created = 0;
         $skipped = 0;
         $errors = [];
-        $highestRow = min((int) $sheet->getHighestDataRow(), self::IMPORT_MAX_ROWS + 1);
+        $highestRow = (int) $sheet->getHighestDataRow();
+        $rowLimit = $options['max_rows'] ?? null;
+
+        if ($rowLimit !== null) {
+            $highestRow = min($highestRow, $rowLimit + 1);
+        }
 
         for ($row = 2; $row <= $highestRow; $row++) {
             $name = trim((string) $sheet->getCell("A{$row}")->getValue());
@@ -131,7 +175,25 @@ class ItemExcelService
                 continue;
             }
 
-            $category = $categories->get(mb_strtolower($categoryName));
+            if ($categoryName === '') {
+                $errors[] = "Baris {$row}: Kategori wajib diisi.";
+                $skipped++;
+
+                continue;
+            }
+
+            if ($unitLabel === '' && $defaultUnitLabel) {
+                $unitLabel = $defaultUnitLabel;
+            }
+
+            $categoryKey = mb_strtolower($categoryName);
+            $category = $categories->get($categoryKey);
+
+            if (! $category && $createMissingMasters) {
+                $category = ItemCategory::create(['name' => $categoryName]);
+                $categories->put($categoryKey, $category);
+            }
+
             if (! $category) {
                 $errors[] = "Baris {$row}: Kategori \"{$categoryName}\" tidak ditemukan.";
                 $skipped++;
@@ -141,6 +203,16 @@ class ItemExcelService
 
             $unit = $units->get(mb_strtolower($unitLabel))
                 ?? $units->get(mb_strtolower($this->normalizeUnitName($unitLabel)));
+
+            if (! $unit && $createMissingMasters && $unitLabel !== '') {
+                $unit = $this->createUnitFromLabel($unitLabel);
+                $units->put(mb_strtolower($this->unitLabel($unit)), $unit);
+                $units->put(mb_strtolower($unit->name), $unit);
+
+                if ($unit->abbreviation) {
+                    $units->put(mb_strtolower($unit->abbreviation), $unit);
+                }
+            }
 
             if (! $unit) {
                 $errors[] = "Baris {$row}: Satuan \"{$unitLabel}\" tidak ditemukan.";
@@ -174,6 +246,21 @@ class ItemExcelService
         }
 
         return compact('created', 'skipped', 'errors');
+    }
+
+    private function createUnitFromLabel(string $label): ItemUnit
+    {
+        $name = $this->normalizeUnitName($label);
+        $abbreviation = null;
+
+        if (preg_match('/\(([^)]+)\)/u', $label, $matches)) {
+            $abbreviation = trim($matches[1]);
+        }
+
+        return ItemUnit::firstOrCreate(
+            ['name' => $name],
+            ['abbreviation' => $abbreviation ?: mb_strtolower(mb_substr($name, 0, 3))]
+        );
     }
 
     private function buildTemplateSpreadsheet(): Spreadsheet

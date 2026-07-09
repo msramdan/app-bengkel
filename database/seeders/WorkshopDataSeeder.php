@@ -5,8 +5,6 @@ namespace Database\Seeders;
 use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\Item;
-use App\Models\ItemCategory;
-use App\Models\ItemUnit;
 use App\Models\StockMovement;
 use App\Models\Technician;
 use App\Models\User;
@@ -64,96 +62,6 @@ class WorkshopDataSeeder extends Seeder
             $technician->save();
         }
 
-        // ── Kategori & Satuan ──
-        $categoryIds = [];
-        foreach ([
-            'Oli & Fluida' => 'Oli mesin, oli rem, coolant, dan cairan kendaraan',
-            'Filter' => 'Filter oli, filter udara, filter AC',
-            'Sparepart Mesin' => 'Kampas rem, busi, aki, belt, dan komponen mesin',
-            'Aksesoris' => 'Wiper, lampu, dan aksesoris kendaraan',
-        ] as $name => $description) {
-            $categoryIds[$name] = ItemCategory::firstOrCreate(
-                ['name' => $name],
-                ['description' => $description]
-            )->id;
-        }
-
-        $unitIds = [];
-        foreach ([
-            'Pieces' => 'pcs',
-            'Liter' => 'L',
-            'Set' => 'set',
-            'Botol' => 'btl',
-        ] as $name => $abbreviation) {
-            $unitIds[$name] = ItemUnit::firstOrCreate(
-                ['name' => $name],
-                ['abbreviation' => $abbreviation]
-            )->id;
-        }
-
-        // ── Barang ──
-        $items = [
-            ['name' => 'Oli Mesin 1L Shell Helix', 'category' => 'Oli & Fluida', 'unit' => 'Liter', 'stock_opname' => 10, 'purchase_price' => 45000, 'selling_price' => 65000, 'stock_in' => 25],
-            ['name' => 'Oli Mesin 1L Pertamina Enduro', 'category' => 'Oli & Fluida', 'unit' => 'Liter', 'stock_opname' => 10, 'purchase_price' => 38000, 'selling_price' => 55000, 'stock_in' => 30],
-            ['name' => 'Oli Rem DOT 4', 'category' => 'Oli & Fluida', 'unit' => 'Botol', 'stock_opname' => 5, 'purchase_price' => 25000, 'selling_price' => 40000, 'stock_in' => 12],
-            ['name' => 'Coolant Radiator 1L', 'category' => 'Oli & Fluida', 'unit' => 'Liter', 'stock_opname' => 8, 'purchase_price' => 22000, 'selling_price' => 35000, 'stock_in' => 15],
-            ['name' => 'Filter Oli Avanza/Xenia', 'category' => 'Filter', 'unit' => 'Pieces', 'stock_opname' => 5, 'purchase_price' => 18000, 'selling_price' => 30000, 'stock_in' => 20],
-            ['name' => 'Filter Udara Avanza', 'category' => 'Filter', 'unit' => 'Pieces', 'stock_opname' => 5, 'purchase_price' => 35000, 'selling_price' => 55000, 'stock_in' => 8],
-            ['name' => 'Kampas Rem Depan Avanza', 'category' => 'Sparepart Mesin', 'unit' => 'Set', 'stock_opname' => 3, 'purchase_price' => 120000, 'selling_price' => 175000, 'stock_in' => 6],
-            ['name' => 'Busi NGK Iridium', 'category' => 'Sparepart Mesin', 'unit' => 'Pieces', 'stock_opname' => 10, 'purchase_price' => 45000, 'selling_price' => 70000, 'stock_in' => 24],
-            ['name' => 'Aki GS Astra GTZ5S', 'category' => 'Sparepart Mesin', 'unit' => 'Pieces', 'stock_opname' => 2, 'purchase_price' => 185000, 'selling_price' => 250000, 'stock_in' => 4],
-            ['name' => 'V-Belt Avanza', 'category' => 'Sparepart Mesin', 'unit' => 'Pieces', 'stock_opname' => 3, 'purchase_price' => 65000, 'selling_price' => 95000, 'stock_in' => 5],
-            ['name' => 'Wiper Blade 14"', 'category' => 'Aksesoris', 'unit' => 'Pieces', 'stock_opname' => 5, 'purchase_price' => 28000, 'selling_price' => 45000, 'stock_in' => 3],
-            ['name' => 'Lampu LED H4', 'category' => 'Aksesoris', 'unit' => 'Pieces', 'stock_opname' => 4, 'purchase_price' => 75000, 'selling_price' => 110000, 'stock_in' => 0],
-        ];
-
-        foreach ($items as $row) {
-            $stockInQty = $row['stock_in'];
-            $category = $row['category'];
-            $unit = $row['unit'];
-            unset($row['stock_in'], $row['category'], $row['unit']);
-
-            $item = Item::firstOrNew(['name' => $row['name']]);
-            if (! $item->exists) {
-                $item->code = Item::generateCode();
-            }
-            $item->fill([
-                ...$row,
-                'category_id' => $categoryIds[$category],
-                'unit_id' => $unitIds[$unit],
-                'is_active' => true,
-                'stock' => $item->exists ? $item->stock : 0,
-            ]);
-            $item->save();
-
-            $hasStockIn = StockMovement::query()
-                ->where('item_id', $item->id)
-                ->where('type', 'in')
-                ->where('notes', 'Stok awal dari seeder')
-                ->exists();
-
-            if (! $hasStockIn && $stockInQty > 0) {
-                $stockService->stockIn(
-                    $item->id,
-                    $stockInQty,
-                    $userId,
-                    null,
-                    'Stok awal dari seeder'
-                );
-            }
-        }
-
-        // ── Contoh stok keluar (sekali saja) ──
-        $oliShell = Item::where('name', 'Oli Mesin 1L Shell Helix')->first();
-        if ($oliShell && ! StockMovement::where('notes', 'Contoh pemakaian servis — oli shell')->exists()) {
-            $stockService->stockOut($oliShell->id, 3, $userId, null, 'Contoh pemakaian servis — oli shell');
-        }
-
-        $filterOli = Item::where('name', 'Filter Oli Avanza/Xenia')->first();
-        if ($filterOli && ! StockMovement::where('notes', 'Contoh pemakaian servis — filter oli')->exists()) {
-            $stockService->stockOut($filterOli->id, 2, $userId, null, 'Contoh pemakaian servis — filter oli');
-        }
-
         // ── Master Jasa Servis ──
         $workshopServices = [
             ['name' => 'Ganti Oli + Filter', 'description' => 'Servis ganti oli mesin dan filter oli', 'price' => 75000],
@@ -175,18 +83,28 @@ class WorkshopDataSeeder extends Seeder
         // ── Contoh transaksi demo ──
         $customer = Customer::where('name', 'Budi Santoso')->first();
         $technician = Technician::where('name', 'Ahmad Fauzi')->where('is_active', true)->first();
-        $oliShell = Item::where('name', 'Oli Mesin 1L Shell Helix')->first();
+        $demoItem = Item::query()->where('name', 'like', '%ACCU GS GTZ5S%')->first()
+            ?? Item::query()->where('is_active', true)->orderBy('id')->first();
         $gantiOli = WorkshopService::where('name', 'Ganti Oli + Filter')->first();
 
-        if ($customer && $technician && $oliShell && $gantiOli && $oliShell->stock >= 1) {
+        if ($customer && $technician && $demoItem && $gantiOli) {
+            if (! StockMovement::query()
+                ->where('item_id', $demoItem->id)
+                ->where('type', 'in')
+                ->where('notes', 'Stok awal demo transaksi')
+                ->exists()) {
+                $stockService->stockIn($demoItem->id, 5, $userId, null, 'Stok awal demo transaksi');
+                $demoItem->refresh();
+            }
+
             $hasDemoTx = \App\Models\Transaction::where('notes', 'Contoh transaksi gabungan dari seeder')->exists();
 
-            if (! $hasDemoTx) {
+            if (! $hasDemoTx && $demoItem->stock >= 1) {
                 $transactionService->create([
                     'customer_id' => $customer->id,
                     'technician_id' => $technician->id,
                     'notes' => 'Contoh transaksi gabungan dari seeder',
-                    'items' => [['item_id' => $oliShell->id, 'quantity' => 1]],
+                    'items' => [['item_id' => $demoItem->id, 'quantity' => 1]],
                     'services' => [['workshop_service_id' => $gantiOli->id, 'quantity' => 1]],
                 ], $userId);
             }
@@ -208,11 +126,20 @@ class WorkshopDataSeeder extends Seeder
             }
         }
 
-        $busi = Item::where('name', 'Busi NGK Iridium')->first();
-        if ($customer && $busi && $busi->stock >= 2) {
+        $busi = Item::query()->where('name', 'like', '%BUSI%')->where('is_active', true)->first();
+        if ($customer && $busi) {
+            if (! StockMovement::query()
+                ->where('item_id', $busi->id)
+                ->where('type', 'in')
+                ->where('notes', 'Stok awal demo penjualan')
+                ->exists()) {
+                $stockService->stockIn($busi->id, 5, $userId, null, 'Stok awal demo penjualan');
+                $busi->refresh();
+            }
+
             $hasSaleTx = \App\Models\Transaction::where('notes', 'Contoh penjualan sparepart dari seeder')->exists();
 
-            if (! $hasSaleTx) {
+            if (! $hasSaleTx && $busi->stock >= 2) {
                 $transactionService->create([
                     'customer_id' => $customer->id,
                     'notes' => 'Contoh penjualan sparepart dari seeder',

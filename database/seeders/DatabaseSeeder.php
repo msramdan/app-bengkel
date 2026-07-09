@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class,
             FinancialCategorySeeder::class,
             SettingSeeder::class,
+            AthaMotorItemSeeder::class,
             WorkshopDataSeeder::class,
         ]);
     }
