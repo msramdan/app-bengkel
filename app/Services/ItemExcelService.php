@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemUnit;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
@@ -131,17 +132,29 @@ class ItemExcelService
             'create_missing_masters' => true,
             'max_rows' => null,
             'default_unit_label' => 'Pieces (pcs)',
+            // File Atha Motor: kolom D = stok tersedia, bukan stock opname.
+            'column_d_as_available_stock' => true,
         ]);
     }
 
     /**
-     * @param  array{create_missing_masters: bool, max_rows?: ?int, default_unit_label?: string}  $options
+     * @param  array{
+     *     create_missing_masters: bool,
+     *     max_rows?: ?int,
+     *     default_unit_label?: string,
+     *     column_d_as_available_stock?: bool
+     * }  $options
      * @return array{created: int, skipped: int, errors: array<int, string>}
      */
     private function processImportRows(Worksheet $sheet, array $options): array
     {
         $createMissingMasters = $options['create_missing_masters'];
         $defaultUnitLabel = $options['default_unit_label'] ?? null;
+        $columnDAsAvailableStock = (bool) ($options['column_d_as_available_stock'] ?? false);
+        $stockService = $columnDAsAvailableStock ? app(StockService::class) : null;
+        $seedUserId = $columnDAsAvailableStock
+            ? (int) (User::query()->value('id') ?? 0)
+            : 0;
 
         $categories = ItemCategory::query()->orderBy('name')->get()->keyBy(
             fn (ItemCategory $c) => mb_strtolower(trim($c->name))
@@ -228,19 +241,31 @@ class ItemExcelService
                 continue;
             }
 
-            Item::create([
+            $columnDValue = max(0, (int) $sheet->getCell("D{$row}")->getValue());
+
+            $item = Item::create([
                 'code' => Item::generateCode(),
                 'name' => $name,
                 'category_id' => $category->id,
                 'unit_id' => $unit->id,
                 'stock' => 0,
-                'stock_opname' => max(0, (int) $sheet->getCell("D{$row}")->getValue()),
+                'stock_opname' => $columnDAsAvailableStock ? 0 : $columnDValue,
                 'purchase_price' => max(0, (float) $sheet->getCell("E{$row}")->getValue()),
                 'selling_price' => max(0, (float) $sheet->getCell("F{$row}")->getValue()),
                 'member_price' => max(0, (float) $sheet->getCell("G{$row}")->getValue()),
                 'description' => trim((string) $sheet->getCell("H{$row}")->getValue()) ?: null,
                 'is_active' => $this->parseYesNo($sheet->getCell("I{$row}")->getValue(), true),
             ]);
+
+            if ($columnDAsAvailableStock && $columnDValue > 0 && $stockService && $seedUserId > 0) {
+                $stockService->stockIn(
+                    $item->id,
+                    $columnDValue,
+                    $seedUserId,
+                    null,
+                    'Stok awal dari seeder Excel Atha Motor'
+                );
+            }
 
             $created++;
         }

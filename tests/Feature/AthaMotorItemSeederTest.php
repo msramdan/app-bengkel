@@ -20,6 +20,10 @@ class AthaMotorItemSeederTest extends TestCase
 
         $this->assertGreaterThanOrEqual(900, Item::count());
         $this->assertGreaterThanOrEqual(100, ItemCategory::count());
-        $this->assertNotNull(Item::where('name', 'like', '%ACCU GS GTZ5S%')->first());
+
+        $accu = Item::where('name', 'like', '%ACCU GS GTZ5S%')->first();
+        $this->assertNotNull($accu);
+        $this->assertSame(0, (int) $accu->stock_opname);
+        $this->assertGreaterThan(0, (int) $accu->stock);
     }
 }
