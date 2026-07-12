@@ -34,7 +34,15 @@ class FinancialReportService
       'owner_share' => (float) (clone $salesQuery)->sum('owner_total_share'),
       'owner_items_share' => (float) (clone $salesQuery)->sum('owner_items_share'),
       'owner_service_share' => (float) (clone $salesQuery)->sum('owner_service_share'),
+      'items_cost' => (float) DB::table('transaction_items')
+        ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
+        ->where('transactions.status', 'completed')
+        ->whereBetween('transactions.created_at', [$fromStart, $toEnd])
+        ->selectRaw('COALESCE(SUM(transaction_items.unit_cost * transaction_items.quantity), 0) as v')
+        ->value('v'),
     ];
+
+    $sales['items_margin'] = round($sales['items_revenue'] - $sales['items_cost'], 2);
 
     $commissions = Transaction::query()
       ->where('status', 'completed')
@@ -76,7 +84,15 @@ class FinancialReportService
     $totalInflow = round($sales['revenue'] + $manualIncome['amount'], 2);
     $totalOperatingOutflow = round($purchases['expense'] + $manualExpense['amount'] + $sales['technician_commission'], 2);
 
+    // Arus kas kasar (tetap ditampilkan sebagai info).
     $cashFlowEstimate = round($totalInflow - $totalOperatingOutflow, 2);
+
+    // Laba owner: margin sparepart (jual−beli) + bagian jasa + manual − pengeluaran manual.
+    // Pembelian stok tidak dikurangi lagi di sini agar tidak double-count dengan HPP.
+    $ownerNetEstimate = round(
+      $sales['owner_share'] + $manualIncome['amount'] - $manualExpense['amount'],
+      2
+    );
 
     $transactionInflows = $this->buildPaymentBreakdown(Transaction::class, $fromStart, $toEnd, true, 'total', 'created_at');
     $manualInflows = $this->buildManualPaymentBreakdown('income', $fromStart, $toEnd, true);
@@ -98,7 +114,7 @@ class FinancialReportService
         'operating_outflow' => $totalOperatingOutflow,
       ],
       'profit' => [
-        'owner_net_estimate' => $cashFlowEstimate,
+        'owner_net_estimate' => $ownerNetEstimate,
         'cash_flow_estimate' => $cashFlowEstimate,
       ],
       'payment_sources' => [

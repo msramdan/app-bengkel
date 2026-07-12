@@ -46,7 +46,7 @@
             <div class="dash-kpi-body">
                 <div class="dash-kpi-label">Estimasi Laba Owner</div>
                 <div class="dash-kpi-value">{{ $rp($profit['owner_net_estimate']) }}</div>
-                <div class="dash-kpi-meta">Bagian owner − pembelian</div>
+                <div class="dash-kpi-meta">Margin sparepart + jasa owner − pengeluaran manual</div>
             </div>
         </div>
     </div>
@@ -112,7 +112,11 @@
                             <td class="text-end">{{ $rp($sales['owner_service_share']) }}</td>
                         </tr>
                         <tr>
-                            <td>Bagian Owner — Sparepart (100%)</td>
+                            <td>HPP Sparepart (harga beli)</td>
+                            <td class="text-end">{{ $rp($sales['items_cost'] ?? 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Bagian Owner — Sparepart (margin)</td>
                             <td class="text-end">{{ $rp($sales['owner_items_share']) }}</td>
                         </tr>
                         <tr class="fr-total-row-web">
@@ -123,7 +127,7 @@
                 </table>
                 <p class="fr-hint-web mb-0">
                     <i class="bi bi-info-circle me-1"></i>
-                    Sparepart 100% untuk toko. Komisi dihitung dari total jasa, bukan dari harga barang.
+                    Margin sparepart = harga jual − harga beli. Komisi hanya dari jasa servis.
                 </p>
             </div>
         </div>

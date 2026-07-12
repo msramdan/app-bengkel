@@ -85,8 +85,16 @@ class TransactionServiceTest extends TestCase
         $this->assertSame('sale', $tx->type);
         $this->assertSame(75000.0, (float) $tx->subtotal_items);
         $this->assertSame(0.0, (float) $tx->technician_commission);
-        $this->assertSame(75000.0, (float) $tx->owner_items_share);
+        // jual 25_000 − beli 10_000 = 15_000 × 3
+        $this->assertSame(45000.0, (float) $tx->owner_items_share);
         $this->assertSame(7, $this->item->fresh()->stock);
+        $this->assertDatabaseHas('transaction_items', [
+            'transaction_id' => $tx->id,
+            'item_id' => $this->item->id,
+            'unit_price' => 25000,
+            'unit_cost' => 10000,
+            'quantity' => 3,
+        ]);
         $this->assertDatabaseHas('stock_movements', [
             'item_id' => $this->item->id,
             'type' => 'out',

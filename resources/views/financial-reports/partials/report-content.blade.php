@@ -29,7 +29,7 @@
             <td class="fr-stat-card">
                 <div class="fr-stat-label">Estimasi Laba Owner</div>
                 <div class="fr-stat-value">{{ $rp($profit['owner_net_estimate']) }}</div>
-                <div class="fr-stat-meta">Pemasukan − pengeluaran − komisi</div>
+                <div class="fr-stat-meta">Margin sparepart + jasa owner − pengeluaran manual</div>
             </td>
         </tr>
     </table>
@@ -59,11 +59,12 @@
                     <tbody>
                         <tr><td>Komisi Teknisi (dari jasa)</td><td class="text-end">{{ $rp($sales['technician_commission']) }}</td></tr>
                         <tr><td>Bagian Owner — Jasa</td><td class="text-end">{{ $rp($sales['owner_service_share']) }}</td></tr>
-                        <tr><td>Bagian Owner — Sparepart (100%)</td><td class="text-end">{{ $rp($sales['owner_items_share']) }}</td></tr>
+                        <tr><td>HPP Sparepart (harga beli)</td><td class="text-end">{{ $rp($sales['items_cost'] ?? 0) }}</td></tr>
+                        <tr><td>Bagian Owner — Sparepart (margin)</td><td class="text-end">{{ $rp($sales['owner_items_share']) }}</td></tr>
                         <tr class="fr-total-row"><td>Total Bagian Owner</td><td class="text-end">{{ $rp($sales['owner_share']) }}</td></tr>
                     </tbody>
                 </table>
-                <p class="fr-hint">Sparepart 100% untuk toko. Komisi dihitung dari total jasa, bukan dari harga barang.</p>
+                <p class="fr-hint">Margin sparepart = harga jual − harga beli. Komisi hanya dari jasa servis.</p>
             </div>
         </td>
     </tr>

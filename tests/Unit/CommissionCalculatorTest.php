@@ -34,16 +34,18 @@ class CommissionCalculatorTest extends TestCase
     }
 
     #[Test]
-    public function sparepart_revenue_goes_entirely_to_owner(): void
+    public function sparepart_owner_share_uses_sell_minus_buy_margin(): void
     {
         $calc = new CommissionCalculator;
 
-        $result = $calc->calculate(150000, 0);
+        // Omzet jual 150_000, HPP 90_000 → margin owner 60_000
+        $result = $calc->calculate(150000, 0, 0, null, 90000);
 
         $this->assertSame(0.0, $result['technician_commission']);
         $this->assertSame(0.0, $result['owner_service_share']);
-        $this->assertSame(150000.0, $result['owner_items_share']);
-        $this->assertSame(150000.0, $result['owner_total_share']);
+        $this->assertSame(60000.0, $result['owner_items_share']);
+        $this->assertSame(60000.0, $result['owner_total_share']);
+        $this->assertSame(90000.0, $result['items_cost']);
     }
 
     #[Test]
@@ -51,12 +53,13 @@ class CommissionCalculatorTest extends TestCase
     {
         $calc = new CommissionCalculator;
 
-        $result = $calc->calculate(65000, 75000, 5000, 20);
+        // Items jual 65_000, HPP 40_000 → margin 25_000
+        $result = $calc->calculate(65000, 75000, 5000, 20, 40000);
 
         $this->assertSame(15000.0, $result['technician_commission']);
         $this->assertSame(60000.0, $result['owner_service_share']);
-        $this->assertSame(65000.0, $result['owner_items_share']);
-        $this->assertSame(125000.0, $result['owner_total_share']);
+        $this->assertSame(25000.0, $result['owner_items_share']);
+        $this->assertSame(85000.0, $result['owner_total_share']);
         $this->assertSame(135000.0, $result['total']);
     }
 

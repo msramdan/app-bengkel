@@ -230,6 +230,9 @@ class TransactionService
 
         $subtotalItems = (float) $resolvedItems->sum('subtotal');
         $subtotalServices = (float) $resolvedServices->sum('subtotal');
+        $itemsCost = (float) $resolvedItems->sum(
+            fn (array $line) => (float) $line['unit_cost'] * (int) $line['quantity']
+        );
         $discount = max(0, (float) ($payload['discount'] ?? 0));
         $gross = $subtotalItems + $subtotalServices;
 
@@ -238,6 +241,7 @@ class TransactionService
             $subtotalServices,
             $discount,
             $technician ? (float) $technician->commission_percent : null,
+            $itemsCost,
         );
 
         return [
@@ -461,12 +465,15 @@ class TransactionService
                 throw new InvalidArgumentException("Harga barang \"{$item->name}\" tidak valid.");
             }
 
+            $unitCost = max(0, (float) $item->purchase_price);
+
             $resolved->push([
                 'item_id' => $item->id,
                 'item_code' => $item->code,
                 'item_name' => $item->name,
                 'quantity' => $qty,
                 'unit_price' => $unitPrice,
+                'unit_cost' => $unitCost,
                 'subtotal' => round($unitPrice * $qty, 2),
             ]);
         }

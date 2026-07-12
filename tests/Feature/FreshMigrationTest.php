@@ -14,7 +14,7 @@ class FreshMigrationTest extends TestCase
     #[Test]
     public function migrate_fresh_with_seed_runs_without_errors(): void
     {
-        $this->assertSame(24, count(File::files(database_path('migrations'))));
+        $this->assertSame(25, count(File::files(database_path('migrations'))));
 
         $exitCode = Artisan::call('migrate:fresh', [
             '--seed' => true,
