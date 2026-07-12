@@ -46,7 +46,18 @@
     </div>
 
     <article class="receipt-thermal">
+        @if (brand_has_custom_logo())
+            <div class="receipt-center receipt-logo-wrap">
+                <img src="{{ brand_logo_url() }}" alt="{{ brand_name() }}" class="receipt-logo">
+            </div>
+        @endif
         <div class="receipt-center receipt-brand">{{ brand_name() }}</div>
+        @if (brand_address() !== '')
+            <div class="receipt-center receipt-meta">{{ brand_address() }}</div>
+        @endif
+        @if (brand_whatsapp() !== '')
+            <div class="receipt-center receipt-meta">WA: {{ brand_whatsapp() }}</div>
+        @endif
         <div class="receipt-center receipt-title">NOTA PENJUALAN</div>
         <div class="receipt-center receipt-meta">{{ $transaction->transaction_no }} · {{ $txDate }}</div>
 

@@ -13,7 +13,9 @@ use App\Services\OilChangeReminderService;
 use App\Services\SettingService;
 use Carbon\Carbon;
 use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -37,7 +39,10 @@ class ApplicationSettingsTest extends TestCase
             ->get(route('settings.edit'))
             ->assertOk()
             ->assertSee('Pengaturan Aplikasi')
-            ->assertSee('Gateway WhatsApp');
+            ->assertSee('Gateway WhatsApp')
+            ->assertSee('Alamat Bengkel')
+            ->assertSee('WhatsApp Bengkel')
+            ->assertSee('Logo Bengkel');
     }
 
     #[Test]
@@ -68,6 +73,65 @@ class ApplicationSettingsTest extends TestCase
         $this->assertSame('Servis Terpercaya', $settings->getString('app_tagline'));
         $this->assertSame(2, $settings->getInt('oil_change_reminder_months'));
         $this->assertSame('Bengkel Jaya', brand_name());
+    }
+
+    #[Test]
+    public function admin_can_update_company_address_whatsapp_and_logo(): void
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->image('logo-bengkel.png', 200, 200);
+
+        $this->actingAs($this->admin)
+            ->put(route('settings.update'), [
+                'app_name' => 'Atha Motor',
+                'oil_change_reminder_months' => 3,
+                'company_address' => 'Jl. Merdeka No. 10, Bandung',
+                'company_whatsapp' => '081234567890',
+                'photo' => $file,
+            ])
+            ->assertRedirect(route('settings.edit'));
+
+        $settings = app(SettingService::class);
+        $this->assertSame('Jl. Merdeka No. 10, Bandung', $settings->getString('company_address'));
+        $this->assertSame('081234567890', $settings->getString('company_whatsapp'));
+        $this->assertNotSame('', $settings->getString('company_logo'));
+        $this->assertTrue(Storage::disk('public')->exists($settings->getString('company_logo')));
+        $this->assertSame('Jl. Merdeka No. 10, Bandung', brand_address());
+        $this->assertSame('081234567890', brand_whatsapp());
+        $this->assertTrue(brand_has_custom_logo());
+    }
+
+    #[Test]
+    public function updating_settings_without_logo_keeps_existing_logo(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->admin)
+            ->put(route('settings.update'), [
+                'app_name' => 'Atha Motor',
+                'oil_change_reminder_months' => 3,
+                'company_address' => 'Alamat Lama',
+                'company_whatsapp' => '081111111111',
+                'photo' => UploadedFile::fake()->image('logo1.png'),
+            ])
+            ->assertRedirect(route('settings.edit'));
+
+        $logoPath = app(SettingService::class)->getString('company_logo');
+
+        $this->actingAs($this->admin)
+            ->put(route('settings.update'), [
+                'app_name' => 'Atha Motor',
+                'oil_change_reminder_months' => 3,
+                'company_address' => 'Alamat Baru',
+                'company_whatsapp' => '082222222222',
+            ])
+            ->assertRedirect(route('settings.edit'));
+
+        $settings = app(SettingService::class);
+        $this->assertSame('Alamat Baru', $settings->getString('company_address'));
+        $this->assertSame('082222222222', $settings->getString('company_whatsapp'));
+        $this->assertSame($logoPath, $settings->getString('company_logo'));
     }
 
     #[Test]

@@ -85,17 +85,10 @@
                             <div class="cart-add-row row g-2">
                                 <div class="col-md-7">
                                     <label class="form-label small mb-0" for="item_select">Pilih Barang</label>
-                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select" disabled>
+                                    <select id="item_select" class="form-control-clean cart-add-control atha-searchable-select atha-select2-item" disabled>
                                         <option value="">-- Pilih Barang --</option>
                                         @foreach ($items as $item)
-                                            <option value="{{ $item->id }}"
-                                                data-code="{{ $item->code }}"
-                                                data-name="{{ $item->name }}"
-                                                data-stock="{{ $item->stock }}"
-                                                data-price="{{ $item->selling_price }}"
-                                                data-member-price="{{ $item->member_price ?? 0 }}">
-                                                {{ $item->code }} — {{ $item->name }} (Stok: {{ number_format($item->stock) }})
-                                            </option>
+                                            @include('transactions.include.item-option', ['item' => $item])
                                         @endforeach
                                     </select>
                                 </div>
@@ -205,7 +198,7 @@
 
 @push('js')
     <script src="{{ asset('js/payment-fields.js') }}"></script>
-    <script src="{{ asset('js/transaction-cart.js') }}"></script>
+    <script src="{{ asset('js/transaction-cart.js') }}?v={{ filemtime(public_path('js/transaction-cart.js')) }}"></script>
     <script>
         AthaPaymentFields.init();
         AthaTransactionCart.init({

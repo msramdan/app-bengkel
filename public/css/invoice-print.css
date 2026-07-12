@@ -71,6 +71,16 @@ body.print-body {
   letter-spacing: 0.02em;
 }
 
+.receipt-logo-wrap {
+  margin-bottom: 4px;
+}
+
+.receipt-logo {
+  max-width: 42mm;
+  max-height: 18mm;
+  object-fit: contain;
+}
+
 .receipt-title {
   font-size: 12px;
   font-weight: 900;

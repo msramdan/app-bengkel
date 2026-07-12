@@ -128,9 +128,20 @@
 
                 const price = getDefaultItemPrice(item);
                 const priceLabel = usesMemberPricing() ? 'Harga Member' : 'Harga Jual';
-                $('#item-hint').text(
-                    'Stok: ' + Number(item.stock).toLocaleString('id-ID') + ' | ' + priceLabel + ': ' + formatRp(price)
-                );
+                const category = item.category?.name || item.category_name || '';
+                const unit = item.unit
+                    ? (item.unit.abbreviation ? item.unit.name + ' (' + item.unit.abbreviation + ')' : item.unit.name)
+                    : (item.unit_label || '');
+
+                let hint = 'Stok: ' + Number(item.stock).toLocaleString('id-ID')
+                    + ' | ' + priceLabel + ': ' + formatRp(price);
+                if (category) {
+                    hint += ' | ' + category;
+                }
+                if (unit) {
+                    hint += ' | ' + unit;
+                }
+                $('#item-hint').text(hint);
             }
 
             function recalculateItemCartPrices() {
@@ -221,7 +232,7 @@
                     discount: '0',
                     notes: '',
                     technicianId: '',
-                    paymentMethod: $('#payment_method').val() || 'cash',
+                    paymentMethod: 'cash',
                     bankAccountId: '',
                     cashAmountPaid: '',
                 };
@@ -291,6 +302,17 @@
                 $('#payment_method').val('cash').trigger('change');
                 $('#amount_paid').val('');
                 $('#bank_account_id').val('').trigger('change');
+                $('#item_qty').val('1');
+                $('#service_qty').val('1');
+
+                if (window.AthaSearchableSelect) {
+                    AthaSearchableSelect.clear('#item_select');
+                    AthaSearchableSelect.clear('#service_select');
+                } else {
+                    $('#item_select, #service_select').val('').trigger('change');
+                }
+
+                $('#item-hint').text('');
             }
 
             function loadTabState(tab) {
@@ -432,6 +454,7 @@
                     const tab = createEmptyTab();
                     orderTabs.push(tab);
                     activeTabId = tab.id;
+                    loadTabState(tab);
                 } else {
                     const next = orderTabs[Math.min(index, orderTabs.length - 1)];
                     activeTabId = next.id;
@@ -929,6 +952,7 @@
                     refreshItemStock().always(function () {
                         removeActiveTabAfterSuccess();
                         $submit.prop('disabled', false);
+                        updateSummary();
                     });
                 }
 

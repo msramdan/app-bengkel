@@ -70,9 +70,13 @@ class TransactionController extends Controller
             'customers' => Customer::query()->orderBy('name')->get(['id', 'code', 'name', 'phone', 'is_member']),
             'technicians' => Technician::query()->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name', 'commission_percent']),
             'items' => Item::query()
+                ->with(['category:id,name', 'unit:id,name,abbreviation'])
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'code', 'name', 'stock', 'selling_price', 'member_price']),
+                ->get([
+                    'id', 'code', 'name', 'photo', 'category_id', 'unit_id', 'stock',
+                    'purchase_price', 'selling_price', 'member_price',
+                ]),
             'services' => WorkshopService::query()
                 ->where('is_active', true)
                 ->orderBy('name')
@@ -173,9 +177,13 @@ class TransactionController extends Controller
             'transaction' => $transaction,
             'technicians' => Technician::query()->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name', 'commission_percent']),
             'items' => Item::query()
+                ->with(['category:id,name', 'unit:id,name,abbreviation'])
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'code', 'name', 'stock', 'selling_price', 'member_price']),
+                ->get([
+                    'id', 'code', 'name', 'photo', 'category_id', 'unit_id', 'stock',
+                    'purchase_price', 'selling_price', 'member_price',
+                ]),
             'services' => WorkshopService::query()
                 ->where('is_active', true)
                 ->orderBy('name')

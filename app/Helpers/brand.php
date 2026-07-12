@@ -33,10 +33,55 @@ if (! function_exists('app_description')) {
     }
 }
 
+if (! function_exists('brand_address')) {
+    function brand_address(): string
+    {
+        try {
+            return trim(app(\App\Services\SettingService::class)->getString('company_address'));
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+}
+
+if (! function_exists('brand_whatsapp')) {
+    function brand_whatsapp(): string
+    {
+        try {
+            return trim(app(\App\Services\SettingService::class)->getString('company_whatsapp'));
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+}
+
 if (! function_exists('brand_logo_url')) {
     function brand_logo_url(): string
     {
-        return asset(config('branding.logo'));
+        try {
+            $path = trim(app(\App\Services\SettingService::class)->getString('company_logo'));
+
+            if ($path !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+            }
+        } catch (\Throwable) {
+            // fallback ke logo default
+        }
+
+        return asset((string) config('branding.logo', 'logo.png'));
+    }
+}
+
+if (! function_exists('brand_has_custom_logo')) {
+    function brand_has_custom_logo(): bool
+    {
+        try {
+            $path = trim(app(\App\Services\SettingService::class)->getString('company_logo'));
+
+            return $path !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($path);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
 

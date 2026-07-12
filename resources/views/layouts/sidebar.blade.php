@@ -3,7 +3,11 @@
         {{-- Brand header seperti panel referensi --}}
         <div class="sidebar-brand">
             <a href="{{ route('dashboard') }}" class="sidebar-brand-link">
-                <span class="sidebar-brand-mark" aria-hidden="true"></span>
+                @if (brand_has_custom_logo())
+                    <img src="{{ brand_logo_url() }}" alt="{{ brand_name() }}" class="sidebar-brand-logo">
+                @else
+                    <span class="sidebar-brand-mark" aria-hidden="true"></span>
+                @endif
                 <div class="sidebar-brand-info">
                     <span class="sidebar-brand-text">{{ brand_name() }}</span>
                     <span class="sidebar-brand-sub">{{ brand_tagline() }}</span>
