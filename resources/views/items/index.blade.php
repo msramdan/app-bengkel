@@ -243,6 +243,20 @@
     <script>
         const rupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
 
+        $('.item-seller-list').on('click', '.item-seller-toggle', function () {
+            const $btn = $(this);
+            const $item = $btn.closest('.item-seller-item');
+            const opening = !$item.hasClass('is-open');
+
+            $item.siblings('.is-open').removeClass('is-open')
+                .find('.item-seller-toggle').attr('aria-expanded', 'false')
+                .end().find('.item-seller-detail').prop('hidden', true);
+
+            $item.toggleClass('is-open', opening);
+            $btn.attr('aria-expanded', opening ? 'true' : 'false');
+            $item.find('.item-seller-detail').prop('hidden', !opening);
+        });
+
         const itemsIndexUrl = @json(route('items.index'));
         const itemsTable = $('#data-table').DataTable({
             processing: true,

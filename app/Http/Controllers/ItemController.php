@@ -78,7 +78,7 @@ class ItemController extends Controller
                 'low_stock' => request()->boolean('low_stock'),
             ],
             'stockInsight' => $this->itemInsights->workshopStock(),
-            'bestSellers' => $this->itemInsights->bestSellers(),
+            'bestSellers' => $this->itemInsights->bestSellers(5),
         ]);
     }
 

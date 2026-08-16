@@ -27,7 +27,7 @@
             <div class="item-insight-sellers__icon" aria-hidden="true">
                 <i class="bi bi-fire"></i>
             </div>
-            <div>
+            <div class="flex-grow-1">
                 <p class="item-insight-kicker item-insight-kicker--muted">Penjualan</p>
                 <h2 class="item-insight-title item-insight-title--dark">Barang Paling Laris</h2>
             </div>
@@ -36,29 +36,30 @@
         @if ($bestSellers->isEmpty())
             <div class="item-insight-empty">
                 <i class="bi bi-bag-x"></i>
-                <p>Belum ada penjualan barang. Data laris muncul otomatis setelah transaksi sparepart.</p>
+                <p>Belum ada penjualan barang.</p>
             </div>
         @else
+            <p class="item-insight-hint">Klik nama barang untuk lihat detail</p>
             <ol class="item-seller-list">
                 @foreach ($bestSellers as $index => $row)
-                    <li class="item-seller-row">
-                        <span class="item-seller-rank item-seller-rank--{{ min($index + 1, 3) }}">{{ $index + 1 }}</span>
-                        @if ($row->photo_url)
-                            <img src="{{ $row->photo_url }}" alt="" class="item-seller-photo">
-                        @else
-                            <span class="item-seller-photo item-seller-photo--empty"><i class="bi bi-box-seam"></i></span>
-                        @endif
-                        <div class="item-seller-meta">
-                            <div class="item-seller-name">{{ $row->item_name }}</div>
-                            <div class="item-seller-sub">
-                                {{ $row->item_code ?: '—' }}
-                                · stok {{ number_format($row->stock) }}
+                    <li class="item-seller-item">
+                        <button type="button" class="item-seller-toggle" aria-expanded="false">
+                            <span class="item-seller-rank item-seller-rank--{{ min($index + 1, 3) }}">{{ $index + 1 }}</span>
+                            <span class="item-seller-name">{{ $row->item_name }}</span>
+                            <span class="item-seller-qty">{{ number_format($row->qty_sold) }}x</span>
+                            <i class="bi bi-chevron-down item-seller-caret" aria-hidden="true"></i>
+                        </button>
+                        <div class="item-seller-detail" hidden>
+                            @if ($row->photo_url)
+                                <img src="{{ $row->photo_url }}" alt="" class="item-seller-photo">
+                            @else
+                                <span class="item-seller-photo item-seller-photo--empty"><i class="bi bi-box-seam"></i></span>
+                            @endif
+                            <div>
+                                <div class="item-seller-detail-line"><span>Kode</span><strong>{{ $row->item_code ?: '—' }}</strong></div>
+                                <div class="item-seller-detail-line"><span>Stok sekarang</span><strong>{{ number_format($row->stock) }}</strong></div>
+                                <div class="item-seller-detail-line"><span>Omzet</span><strong>{{ $rp($row->revenue) }}</strong></div>
                             </div>
-                        </div>
-                        <div class="item-seller-stats">
-                            <strong>{{ number_format($row->qty_sold) }}</strong>
-                            <span>terjual</span>
-                            <em>{{ $rp($row->revenue) }}</em>
                         </div>
                     </li>
                 @endforeach
