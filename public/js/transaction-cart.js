@@ -14,6 +14,7 @@
                 storeUrl: '',
                 itemAvailabilityUrl: '',
                 showUrlTemplate: '',
+                invoiceUrl: '',
                 redirectUrl: '',
                 techPercent: 20,
                 ownerPercent: 80,
@@ -941,18 +942,54 @@
                     payload.amount_paid = $('#amount_paid').val();
                 }
 
+                function openInvoicePrint(transactionId, format) {
+                    if (!transactionId || !settings.invoiceUrl) {
+                        return;
+                    }
+
+                    const base = settings.invoiceUrl.replace('__ID__', transactionId);
+                    const query = format === 'a4' ? '?format=a4&print=1' : '?print=1';
+                    window.open(base + query, '_blank');
+                }
+
                 function handleSubmitSuccess(res) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: res.message,
-                        text: res.data?.transaction_no || '',
-                        timer: 1800,
-                        showConfirmButton: false,
-                    });
                     refreshItemStock().always(function () {
                         removeActiveTabAfterSuccess();
                         $submit.prop('disabled', false);
                         updateSummary();
+                    });
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: res.data?.transaction_no || res.message || '',
+                        showCloseButton: true,
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        showDenyButton: true,
+                        denyButtonText: '<i class="fa fa-print"></i> Print A4',
+                        showCancelButton: true,
+                        cancelButtonText: '<i class="fa fa-print"></i> Print Thermal',
+                        focusConfirm: true,
+                        allowOutsideClick: true,
+                        buttonsStyling: false,
+                        customClass: {
+                            popup: 'tx-pay-success-modal',
+                            title: 'tx-pay-success-title',
+                            htmlContainer: 'tx-pay-success-text',
+                            actions: 'tx-pay-success-actions',
+                            confirmButton: 'btn btn-primary tx-pay-success-ok',
+                            denyButton: 'btn btn-outline-secondary tx-pay-success-print',
+                            cancelButton: 'btn btn-outline-secondary tx-pay-success-print',
+                            closeButton: 'tx-pay-success-close',
+                        },
+                    }).then(function (result) {
+                        const id = res.data?.id;
+                        if (result.isDenied) {
+                            openInvoicePrint(id, 'a4');
+                        } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            openInvoicePrint(id, 'thermal');
+                        }
                     });
                 }
 

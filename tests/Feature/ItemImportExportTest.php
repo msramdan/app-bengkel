@@ -150,4 +150,24 @@ class ItemImportExportTest extends TestCase
 
         @unlink($path);
     }
+
+    #[Test]
+    public function admin_can_force_delete_item_that_still_has_stock(): void
+    {
+        $item = Item::create([
+            'code' => 'BRG-T-DEL1',
+            'name' => 'Barang Tidak Terpakai',
+            'category_id' => $this->category->id,
+            'unit_id' => $this->unit->id,
+            'stock' => 12,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->deleteJson(route('items.destroy', $item))
+            ->assertOk()
+            ->assertJsonPath('message', 'Barang berhasil dihapus.');
+
+        $this->assertSoftDeleted('items', ['id' => $item->id]);
+    }
 }

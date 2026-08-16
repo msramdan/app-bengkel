@@ -128,6 +128,47 @@ class PurchaseAndFinancialReportTest extends TestCase
     }
 
     #[Test]
+    public function admin_can_view_technician_commission_transaction_list(): void
+    {
+        $service = WorkshopService::create([
+            'code' => 'JSV-FIN-02',
+            'name' => 'Ganti Oli',
+            'price' => 100000,
+            'is_active' => true,
+        ]);
+
+        $tx = app(TransactionService::class)->create([
+            'customer_id' => $this->customer->id,
+            'technician_id' => $this->technician->id,
+            'services' => [['workshop_service_id' => $service->id, 'quantity' => 1]],
+        ], $this->user->id);
+
+        $this->actingAs($this->user)
+            ->getJson(route('financial-reports.technician-commissions', [
+                'technician' => $this->technician->id,
+                'from' => now()->toDateString(),
+                'to' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.technician_name', 'Tech')
+            ->assertJsonPath('data.transaction_count', 1)
+            ->assertJsonPath('data.transactions.0.transaction_no', $tx->transaction_no)
+            ->assertJsonPath('data.transactions.0.commission', 80000)
+            ->assertJsonPath('data.transactions.0.services_label', 'Ganti Oli');
+    }
+
+    #[Test]
+    public function teknisi_cannot_view_commission_transaction_list(): void
+    {
+        $teknisi = User::factory()->create();
+        $teknisi->assignRole('Teknisi');
+
+        $this->actingAs($teknisi)
+            ->getJson(route('financial-reports.technician-commissions', $this->technician))
+            ->assertForbidden();
+    }
+
+    #[Test]
     public function kasir_can_create_purchase(): void
     {
         $kasir = User::factory()->create();

@@ -71,6 +71,14 @@
     border-bottom: none;
 }
 
+.fr-commission-link {
+    font-variant-numeric: tabular-nums;
+}
+
+.fr-commission-link:hover {
+    text-decoration: underline !important;
+}
+
 /* Tile sumber dana */
 .fr-source-tile {
     height: 100%;

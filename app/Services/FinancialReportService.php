@@ -60,7 +60,7 @@ class FinancialReportService
         $technician = Technician::find($row->technician_id);
 
         return [
-          'technician_id' => $row->technician_id,
+          'technician_id' => $row->technician_id ? (int) $row->technician_id : null,
           'technician_name' => $technician?->name ?? '-',
           'transaction_count' => (int) $row->transaction_count,
           'services_total' => (float) $row->services_total,
@@ -121,6 +121,72 @@ class FinancialReportService
         'inflows' => $this->mergePaymentBreakdowns($transactionInflows, $manualInflows),
         'outflows' => $this->mergePaymentBreakdowns($purchaseOutflows, $manualOutflows),
       ],
+    ];
+  }
+
+  /**
+   * @return array{
+   *   technician_id: int,
+   *   technician_name: string,
+   *   period: array{from: string, to: string},
+   *   transaction_count: int,
+   *   services_total: float,
+   *   commission_total: float,
+   *   transactions: list<array<string, mixed>>
+   * }
+   */
+  public function technicianCommissionDetails(int $technicianId, Carbon $from, Carbon $to): array
+  {
+    $fromStart = $from->copy()->startOfDay();
+    $toEnd = $to->copy()->endOfDay();
+
+    $technician = Technician::query()->findOrFail($technicianId);
+
+    $transactions = Transaction::query()
+      ->with(['customer:id,name', 'serviceLines:id,transaction_id,service_name,quantity,subtotal'])
+      ->where('status', 'completed')
+      ->where('technician_id', $technicianId)
+      ->where('technician_commission', '>', 0)
+      ->whereBetween('created_at', [$fromStart, $toEnd])
+      ->orderByDesc('created_at')
+      ->get();
+
+    $rows = $transactions->map(function (Transaction $tx) {
+      $services = $tx->serviceLines
+        ->map(function ($line) {
+          $qty = (int) $line->quantity;
+
+          return $qty > 1
+            ? $line->service_name.' × '.$qty
+            : $line->service_name;
+        })
+        ->filter()
+        ->values()
+        ->all();
+
+      return [
+        'id' => $tx->id,
+        'transaction_no' => $tx->transaction_no,
+        'created_at' => $tx->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i'),
+        'customer_name' => $tx->displayCustomerName(),
+        'services' => $services,
+        'services_label' => $services !== [] ? implode(', ', $services) : '-',
+        'services_total' => (float) $tx->subtotal_services,
+        'commission' => (float) $tx->technician_commission,
+      ];
+    })->values()->all();
+
+    return [
+      'technician_id' => $technician->id,
+      'technician_name' => $technician->name,
+      'period' => [
+        'from' => $fromStart->toDateString(),
+        'to' => $toEnd->toDateString(),
+      ],
+      'transaction_count' => count($rows),
+      'services_total' => round(array_sum(array_column($rows, 'services_total')), 2),
+      'commission_total' => round(array_sum(array_column($rows, 'commission')), 2),
+      'transactions' => $rows,
     ];
   }
 

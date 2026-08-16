@@ -192,9 +192,13 @@
 
             $table.on('click', '[data-action="delete"]', function () {
                 const id = $(this).data('id');
+                const stock = Number($(this).data('stock'));
+                const confirmText = Number.isFinite(stock) && stock > 0
+                    ? 'Barang masih ada stok ' + stock + '. Tetap hapus paksa? Riwayat transaksi lama tidak ikut terhapus.'
+                    : 'Data yang dihapus tidak dapat dikembalikan.';
                 Swal.fire({
                     title: 'Hapus ' + settings.entityName + '?',
-                    text: 'Data yang dihapus tidak dapat dikembalikan.',
+                    text: confirmText,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#8B1538',

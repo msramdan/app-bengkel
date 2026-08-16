@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ asset('css/invoice-print.css') }}?v={{ filemtime(public_path('css/invoice-print.css')) }}">
     @stack('css')
 </head>
-<body class="print-body">
+<body class="print-body @yield('body_class')">
     @yield('content')
     @stack('js')
 </body>

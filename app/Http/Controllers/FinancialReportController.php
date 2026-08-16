@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Technician;
 use App\Services\FinancialReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
@@ -13,7 +15,7 @@ class FinancialReportController extends Controller
 {
     public function __construct(private FinancialReportService $reportService)
     {
-        $this->middleware('permission:financial report view')->only(['index', 'exportPdf']);
+        $this->middleware('permission:financial report view')->only(['index', 'exportPdf', 'technicianCommissions']);
     }
 
     public function index(Request $request): View
@@ -25,6 +27,15 @@ class FinancialReportController extends Controller
             'report' => $report,
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
+        ]);
+    }
+
+    public function technicianCommissions(Request $request, Technician $technician): JsonResponse
+    {
+        [$from, $to] = $this->resolvePeriod($request);
+
+        return response()->json([
+            'data' => $this->reportService->technicianCommissionDetails($technician->id, $from, $to),
         ]);
     }
 

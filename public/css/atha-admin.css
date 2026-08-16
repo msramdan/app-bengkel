@@ -3389,3 +3389,54 @@ a.dash-card-link .stat-card {
 [data-bs-theme="dark"] .tx-detail-member-icon--member {
   color: #4ade80;
 }
+
+.tx-pay-success-modal {
+  border-radius: 16px !important;
+  padding: 1.5rem 1.25rem 1.25rem !important;
+}
+
+.tx-pay-success-modal .swal2-icon {
+  margin-top: 0.25rem;
+}
+
+.tx-pay-success-title {
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+}
+
+.tx-pay-success-text {
+  margin-top: 0.25rem !important;
+}
+
+.tx-pay-success-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 1.25rem 0 0 !important;
+}
+
+.tx-pay-success-actions .swal2-confirm {
+  order: 1;
+}
+
+.tx-pay-success-actions .swal2-deny {
+  order: 2;
+}
+
+.tx-pay-success-actions .swal2-cancel {
+  order: 3;
+}
+
+.tx-pay-success-ok,
+.tx-pay-success-print {
+  margin: 0 !important;
+  min-width: 7.5rem;
+}
+
+.tx-pay-success-close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.85rem;
+}

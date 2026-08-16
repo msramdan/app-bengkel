@@ -11,7 +11,7 @@
             </button>
         @endcan
         @can('item delete')
-            <button type="button" class="btn btn-action btn-action-delete" data-action="delete" data-id="{{ $model->id }}" title="Hapus">
+            <button type="button" class="btn btn-action btn-action-delete" data-action="delete" data-id="{{ $model->id }}" data-stock="{{ (int) $model->stock }}" title="Hapus">
                 <i class="fa fa-trash-alt"></i>
             </button>
         @endcan

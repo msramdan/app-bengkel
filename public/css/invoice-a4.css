@@ -1,0 +1,202 @@
+body.print-a4 {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  background: #ececec;
+  color: #111;
+}
+
+body.print-a4 .receipt-toolbar {
+  width: 210mm;
+  max-width: 100%;
+}
+
+.invoice-a4 {
+  width: 210mm;
+  max-width: 100%;
+  min-height: 270mm;
+  margin: 0 auto;
+  padding: 16mm 16mm 14mm;
+  background: #fff;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+}
+
+.invoice-a4-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #111;
+}
+
+.invoice-a4-brand {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.invoice-a4-logo {
+  max-width: 64px;
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.invoice-a4-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.invoice-a4-tagline {
+  font-size: 12px;
+  color: #444;
+  margin-top: 2px;
+}
+
+.invoice-a4-meta {
+  font-size: 12px;
+  color: #333;
+  margin-top: 2px;
+}
+
+.invoice-a4-doc {
+  text-align: right;
+  min-width: 180px;
+}
+
+.invoice-a4-doc-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.invoice-a4-doc-no {
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.invoice-a4-status {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 10px;
+  border: 1.5px solid #0a7a32;
+  color: #0a7a32;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.invoice-a4-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 18px 0;
+}
+
+.invoice-a4-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.invoice-a4-strong {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.invoice-a4-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.invoice-a4-table th,
+.invoice-a4-table td {
+  border-bottom: 1px solid #ddd;
+  padding: 8px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.invoice-a4-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid #111;
+}
+
+.invoice-a4-col-no {
+  width: 36px;
+}
+
+.invoice-a4-num {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.invoice-a4-empty {
+  text-align: center;
+  color: #666;
+}
+
+.invoice-a4-totals {
+  width: 280px;
+  margin-left: auto;
+  margin-top: 16px;
+}
+
+.invoice-a4-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.invoice-a4-row--total {
+  font-size: 16px;
+  font-weight: 800;
+  border-top: 2px solid #111;
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
+.invoice-a4-notes {
+  margin-top: 24px;
+  font-size: 12px;
+}
+
+.invoice-a4-footer {
+  margin-top: 36px;
+  text-align: center;
+  font-size: 12px;
+  color: #444;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  body.print-a4 {
+    background: #fff;
+    padding: 0;
+  }
+
+  body.print-a4 .no-print {
+    display: none !important;
+  }
+
+  .invoice-a4 {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}

@@ -164,7 +164,11 @@ class TransactionController extends Controller
             'bankAccount',
         ]);
 
-        return view('transactions.invoice', compact('transaction'));
+        $view = request()->query('format') === 'a4'
+            ? 'transactions.invoice-a4'
+            : 'transactions.invoice';
+
+        return view($view, compact('transaction'));
     }
 
     public function edit(Transaction $transaction): View

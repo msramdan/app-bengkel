@@ -419,6 +419,20 @@ class TransactionManagementTest extends TestCase
     }
 
     #[Test]
+    public function completed_transaction_can_print_a4_invoice(): void
+    {
+        $tx = $this->createSaleTransaction(1);
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('transactions.invoice', ['transaction' => $tx, 'format' => 'a4']))
+            ->assertOk()
+            ->assertSee('invoice-a4')
+            ->assertSee('NOTA PENJUALAN')
+            ->assertSee($tx->transaction_no)
+            ->assertSee($this->customer->name);
+    }
+
+    #[Test]
     public function cancelled_transaction_invoice_returns_not_found(): void
     {
         $tx = $this->createSaleTransaction(1);

@@ -165,14 +165,6 @@ class ItemController extends Controller
 
     public function destroy(Item $item): JsonResponse|RedirectResponse
     {
-        if ($item->stock > 0) {
-            return $this->modalError('Barang masih memiliki stok. Kosongkan stok terlebih dahulu.');
-        }
-
-        if ($item->stockMovements()->exists()) {
-            return $this->modalError('Barang memiliki riwayat stok dan tidak dapat dihapus.');
-        }
-
         $item->deletePhotoFile();
         $item->delete();
 

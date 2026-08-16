@@ -232,7 +232,20 @@
                                 <span class="badge bg-light text-dark border">{{ $row['transaction_count'] }}</span>
                             </td>
                             <td class="text-end">{{ $rp($row['services_total']) }}</td>
-                            <td class="text-end fw-semibold text-info">{{ $rp($row['commission_total']) }}</td>
+                            <td class="text-end fw-semibold">
+                                @if (! empty($row['technician_id']))
+                                    <button type="button"
+                                        class="btn btn-link p-0 text-info fw-semibold text-decoration-none fr-commission-link"
+                                        data-technician-id="{{ $row['technician_id'] }}"
+                                        data-technician-name="{{ $row['technician_name'] }}"
+                                        title="Lihat rincian transaksi komisi">
+                                        {{ $rp($row['commission_total']) }}
+                                        <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                                    </button>
+                                @else
+                                    <span class="text-info">{{ $rp($row['commission_total']) }}</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
@@ -250,6 +263,12 @@
                 @endif
             </table>
         </div>
+        @if ($report['commissions']->isNotEmpty())
+            <p class="fr-hint-web mb-0 mt-3">
+                <i class="bi bi-info-circle me-1"></i>
+                Klik nominal komisi untuk melihat daftar transaksi (nomor, jasa, dan nilai komisi).
+            </p>
+        @endif
     </div>
 </div>
 

@@ -205,6 +205,7 @@
             storeUrl: '{{ route('transactions.store') }}',
             itemAvailabilityUrl: '{{ route('transactions.items.availability') }}',
             showUrlTemplate: '{{ route('transactions.show', '__ID__') }}',
+            invoiceUrl: '{{ route('transactions.invoice', '__ID__') }}',
             redirectUrl: '{{ route('transactions.index') }}',
             techPercent: {{ (int) config('workshop.default_technician_commission_percent', 20) }},
             ownerPercent: {{ 100 - (int) config('workshop.default_technician_commission_percent', 20) }},
