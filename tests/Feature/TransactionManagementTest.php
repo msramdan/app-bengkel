@@ -419,6 +419,38 @@ class TransactionManagementTest extends TestCase
     }
 
     #[Test]
+    public function transaction_history_filters_by_period_and_exports_pdf(): void
+    {
+        $inRange = $this->createSaleTransaction(1);
+        $outOfRange = $this->createSaleTransaction(1);
+        $outOfRange->forceFill(['created_at' => now()->subMonths(2)])->save();
+
+        $from = now()->startOfMonth()->toDateString();
+        $to = now()->toDateString();
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('transactions.index', compact('from', 'to')))
+            ->assertOk()
+            ->assertSee('Filter Periode')
+            ->assertSee('Export PDF');
+
+        $rows = $this->actingAs($this->superAdmin)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('transactions.index', compact('from', 'to')))
+            ->assertOk()
+            ->json('data');
+
+        $numbers = collect($rows)->pluck('transaction_no');
+        $this->assertTrue($numbers->contains($inRange->transaction_no));
+        $this->assertFalse($numbers->contains($outOfRange->transaction_no));
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('transactions.export-pdf', compact('from', 'to')))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    #[Test]
     public function completed_transaction_can_print_a4_invoice(): void
     {
         $tx = $this->createSaleTransaction(1);

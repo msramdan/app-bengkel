@@ -12,6 +12,8 @@
         'subtitle' => 'Kelola master barang dan stok awal.',
     ])
 
+    @include('items.partials.insights')
+
     <div class="data-panel">
         <div class="data-panel-head data-panel-head-row">
             <h2 class="data-panel-title">Daftar Barang</h2>

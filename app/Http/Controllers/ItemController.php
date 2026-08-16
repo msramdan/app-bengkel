@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\RespondsToModal;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemUnit;
+use App\Services\ItemInsightService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class ItemController extends Controller
 {
     use HandlesEntityPhoto, RespondsToModal;
 
-    public function __construct()
+    public function __construct(private ItemInsightService $itemInsights)
     {
         $this->middleware('permission:item view')->only(['index', 'show']);
         $this->middleware('permission:item create')->only('store');
@@ -76,6 +77,8 @@ class ItemController extends Controller
                 'unit_id' => request()->integer('unit_id') ?: '',
                 'low_stock' => request()->boolean('low_stock'),
             ],
+            'stockInsight' => $this->itemInsights->workshopStock(),
+            'bestSellers' => $this->itemInsights->bestSellers(),
         ]);
     }
 

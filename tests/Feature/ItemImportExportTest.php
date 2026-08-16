@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemUnit;
+use App\Models\Customer;
 use App\Models\User;
 use App\Services\ItemExcelService;
+use App\Services\TransactionService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -169,5 +171,56 @@ class ItemImportExportTest extends TestCase
             ->assertJsonPath('message', 'Barang berhasil dihapus.');
 
         $this->assertSoftDeleted('items', ['id' => $item->id]);
+    }
+
+    #[Test]
+    public function item_page_shows_stock_value_and_best_sellers(): void
+    {
+        $hot = Item::create([
+            'code' => 'BRG-T-HOT1',
+            'name' => 'Oli Laris',
+            'category_id' => $this->category->id,
+            'unit_id' => $this->unit->id,
+            'stock' => 10,
+            'purchase_price' => 15000,
+            'selling_price' => 25000,
+            'is_active' => true,
+        ]);
+
+        $cold = Item::create([
+            'code' => 'BRG-T-CLD1',
+            'name' => 'Kampas Jarang',
+            'category_id' => $this->category->id,
+            'unit_id' => $this->unit->id,
+            'stock' => 4,
+            'purchase_price' => 20000,
+            'selling_price' => 35000,
+            'is_active' => true,
+        ]);
+
+        $customer = Customer::create([
+            'code' => 'PLG-T-001',
+            'name' => 'Pelanggan Tes',
+        ]);
+
+        app(TransactionService::class)->create([
+            'customer_mode' => 'existing',
+            'customer_id' => $customer->id,
+            'payment_method' => 'cash',
+            'amount_paid' => 200000,
+            'items' => [
+                ['item_id' => $hot->id, 'quantity' => 3],
+                ['item_id' => $cold->id, 'quantity' => 1],
+            ],
+        ], $this->admin->id);
+
+        $this->actingAs($this->admin)
+            ->get(route('items.index'))
+            ->assertOk()
+            ->assertSee('Nilai Stok Bengkel')
+            ->assertSee('Barang Paling Laris')
+            ->assertSee('Rp 165.000')
+            ->assertSee('Oli Laris')
+            ->assertSee('Kampas Jarang');
     }
 }

@@ -22,20 +22,18 @@ class TransactionController extends Controller
 
     public function __construct(private TransactionService $transactionService)
     {
-        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice', 'itemAvailability']);
+        $this->middleware('permission:transaction view')->only(['index', 'show', 'invoice', 'itemAvailability', 'exportPdf']);
         $this->middleware('permission:transaction create')->only(['create', 'store']);
         $this->middleware('permission:transaction edit')->only(['edit', 'update']);
         $this->middleware('permission:transaction delete')->only(['destroy']);
     }
 
-    public function index(): View|JsonResponse
+    public function index(Request $request): View|JsonResponse
     {
-        if (request()->ajax()) {
-            return DataTables::of(
-                Transaction::query()
-                    ->with(['customer:id,code,name', 'technician:id,code,name', 'user:id,name', 'bankAccount'])
-                    ->latest()
-            )
+        [$from, $to] = $this->resolvePeriod($request);
+
+        if ($request->ajax()) {
+            return DataTables::of($this->periodQuery($from, $to)->latest())
                 ->addIndexColumn()
                 ->addColumn('type_label', fn (Transaction $t) => match ($t->type) {
                     'sale' => '<span class="badge bg-primary-subtle text-primary">Penjualan</span>',
@@ -61,7 +59,44 @@ class TransactionController extends Controller
                 ->toJson();
         }
 
-        return view('transactions.index');
+        $periodQuery = $this->periodQuery($from, $to);
+
+        return view('transactions.index', [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'periodStats' => [
+                'count' => (clone $periodQuery)->count(),
+                'completed_total' => (float) (clone $periodQuery)->where('status', 'completed')->sum('total'),
+            ],
+        ]);
+    }
+
+    public function exportPdf(Request $request): \Illuminate\Http\Response
+    {
+        [$from, $to] = $this->resolvePeriod($request);
+
+        $transactions = $this->periodQuery($from, $to)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $completed = $transactions->where('status', 'completed');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('transactions.pdf', [
+            'transactions' => $transactions,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'summary' => [
+                'count' => $transactions->count(),
+                'completed_count' => $completed->count(),
+                'total' => (float) $completed->sum('total'),
+                'commission' => (float) $completed->sum('technician_commission'),
+            ],
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'riwayat-penjualan-'.$from->format('Ymd').'-'.$to->format('Ymd').'.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function create(): View
@@ -319,5 +354,32 @@ class TransactionController extends Controller
         }
 
         return '<span class="badge bg-secondary-subtle text-secondary">'.e($label).'</span>';
+    }
+
+    /**
+     * @return array{0: \Carbon\Carbon, 1: \Carbon\Carbon}
+     */
+    private function resolvePeriod(Request $request): array
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $from = \Carbon\Carbon::parse($validated['from'] ?? now()->startOfMonth()->toDateString());
+        $to = \Carbon\Carbon::parse($validated['to'] ?? now()->toDateString());
+
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [$from, $to];
+    }
+
+    private function periodQuery(\Carbon\Carbon $from, \Carbon\Carbon $to): \Illuminate\Database\Eloquent\Builder
+    {
+        return Transaction::query()
+            ->with(['customer:id,code,name', 'technician:id,code,name', 'user:id,name', 'bankAccount'])
+            ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()]);
     }
 }

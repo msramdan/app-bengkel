@@ -12,6 +12,57 @@
         'subtitle' => 'Penjualan barang, servis jasa, dan transaksi gabungan.',
     ])
 
+    @php
+        $today = now()->toDateString();
+        $presetHari = ['from' => $today, 'to' => $today];
+        $presetMinggu = ['from' => now()->startOfWeek()->toDateString(), 'to' => $today];
+        $presetBulan = ['from' => now()->startOfMonth()->toDateString(), 'to' => $today];
+        $presetTahun = ['from' => now()->startOfYear()->toDateString(), 'to' => $today];
+        $rp = fn ($n) => 'Rp '.number_format((float) $n, 0, ',', '.');
+    @endphp
+
+    <div class="data-panel mb-4">
+        <div class="data-panel-head">
+            <div class="data-panel-icon"><i class="bi bi-funnel"></i></div>
+            <div class="flex-grow-1">
+                <h3 class="data-panel-title">Filter Periode</h3>
+                <p class="data-panel-desc mb-0">
+                    Periode aktif:
+                    <strong>{{ \Carbon\Carbon::parse($from)->format('d/m/Y') }}</strong>
+                    —
+                    <strong>{{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}</strong>
+                    <span class="text-muted">· {{ number_format($periodStats['count']) }} transaksi · omzet {{ $rp($periodStats['completed_total']) }}</span>
+                </p>
+            </div>
+        </div>
+        <div class="data-panel-body pt-3">
+            <form method="get" action="{{ route('transactions.index') }}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Dari Tanggal</label>
+                    <input type="date" name="from" class="form-control form-control-clean" value="{{ $from }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Sampai Tanggal</label>
+                    <input type="date" name="to" class="form-control form-control-clean" value="{{ $to }}" required>
+                </div>
+                <div class="col-md-6 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel me-1"></i> Terapkan Filter
+                    </button>
+                    <a href="{{ route('transactions.export-pdf', ['from' => $from, 'to' => $to]) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+                    </a>
+                </div>
+            </form>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <a href="{{ route('transactions.index', $presetHari) }}" class="btn btn-sm btn-light">Hari ini</a>
+                <a href="{{ route('transactions.index', $presetMinggu) }}" class="btn btn-sm btn-light">Minggu ini</a>
+                <a href="{{ route('transactions.index', $presetBulan) }}" class="btn btn-sm btn-light">Bulan ini</a>
+                <a href="{{ route('transactions.index', $presetTahun) }}" class="btn btn-sm btn-light">Tahun ini</a>
+            </div>
+        </div>
+    </div>
+
     <div class="data-panel">
         <div class="data-panel-head data-panel-head-row">
             <h2 class="data-panel-title">Riwayat Penjualan</h2>
@@ -77,7 +128,7 @@
         $('#data-table').DataTable({
             processing: true,
             serverSide: true,
-            ajax: '{{ route('transactions.index') }}',
+            ajax: '{{ route('transactions.index', ['from' => $from, 'to' => $to]) }}',
             order: [[10, 'desc']],
             columns: [
                 { data: 'DT_RowIndex', orderable: false, searchable: false },

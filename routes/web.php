@@ -65,6 +65,7 @@ Route::middleware(['auth'])->group(function () {
     // Fase 2 — Transaksi & komisi teknisi
     Route::resource('workshop-services', WorkshopServiceController::class)->except(['create', 'edit']);
     Route::get('transactions/items/availability', [TransactionController::class, 'itemAvailability'])->name('transactions.items.availability');
+    Route::get('transactions/export-pdf', [TransactionController::class, 'exportPdf'])->name('transactions.export-pdf');
     Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
     Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
 
