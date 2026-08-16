@@ -3441,188 +3441,45 @@ a.dash-card-link .stat-card {
   right: 0.85rem;
 }
 
-.item-insights {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.15fr);
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-  align-items: stretch;
-}
-
-.item-insight-value {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  padding: 1.15rem 1.25rem 1.1rem;
-  color: #fff;
-  background:
-    radial-gradient(120% 90% at 100% 0%, rgba(255, 210, 0, 0.22), transparent 46%),
-    linear-gradient(145deg, #5e0e24 0%, #8b1538 52%, #c41e4a 100%);
-  box-shadow: 0 12px 28px rgba(94, 14, 36, 0.18);
-}
-
-.item-insight-value::after {
-  content: "";
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  right: -48px;
-  bottom: -64px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.item-insight-value__top,
-.item-insight-sellers__head {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  margin-bottom: 0.55rem;
-}
-
-.item-insight-value__icon,
-.item-insight-sellers__icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
-.item-insight-value__icon {
-  background: rgba(255, 255, 255, 0.14);
-  color: #ffd200;
-}
-
-.item-insight-kicker {
-  margin: 0;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  opacity: 0.82;
-}
-
-.item-insight-kicker--muted {
-  color: var(--admin-text-muted);
-  opacity: 1;
-}
-
-.item-insight-title {
-  margin: 0.05rem 0 0;
-  font-size: 0.98rem;
-  font-weight: 800;
-  color: #fff;
-}
-
-.item-insight-title--dark {
-  color: var(--admin-text-heading);
-}
-
-.item-insight-amount {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  font-size: clamp(1.45rem, 2.2vw, 1.9rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-}
-
-.item-insight-formula {
-  position: relative;
-  z-index: 1;
-  margin: 0.25rem 0 0.75rem;
-  font-size: 0.78rem;
-  opacity: 0.82;
-}
-
-.item-insight-chips {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.item-insight-chips span {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  padding: 0.22rem 0.6rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.item-insight-sellers {
-  border-radius: 16px;
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-border);
-  padding: 0.9rem 0.95rem 0.7rem;
-}
-
-.item-insight-sellers__icon {
-  background: rgba(245, 158, 11, 0.14);
-  color: #d97706;
-}
-
-.item-insight-hint {
-  margin: 0 0 0.35rem;
-  font-size: 0.72rem;
-  color: var(--admin-text-muted);
-}
-
-.item-insight-empty {
-  text-align: center;
-  color: var(--admin-text-muted);
-  padding: 0.7rem 0.5rem 0.5rem;
-}
-
-.item-insight-empty i {
-  font-size: 1.25rem;
+.item-insight-trigger {
   display: block;
-  margin-bottom: 0.3rem;
-  color: #f59e0b;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
-.item-insight-empty p {
-  margin: 0;
-  font-size: 0.82rem;
+.item-insight-trigger .dash-kpi {
+  height: 100%;
 }
 
-.item-seller-list {
+.item-insight-top-name {
+  font-size: 1rem !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-seller-modal-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.item-seller-item {
-  border-top: 1px solid var(--admin-border);
-}
-
-.item-seller-item:first-child {
-  border-top: 0;
-}
-
-.item-seller-toggle {
-  width: 100%;
+.item-seller-modal-list li {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto 14px;
-  gap: 0.5rem;
+  grid-template-columns: 24px 36px minmax(0, 1fr) auto;
+  gap: 0.7rem;
   align-items: center;
-  padding: 0.42rem 0.1rem;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--admin-border);
 }
 
-.item-seller-toggle:hover .item-seller-name {
-  color: var(--accent);
+.item-seller-modal-list li:last-child {
+  border-bottom: 0;
 }
 
 .item-seller-rank {
@@ -3653,45 +3510,6 @@ a.dash-card-link .stat-card {
   color: #7c2d12;
 }
 
-.item-seller-name {
-  font-weight: 700;
-  color: var(--admin-text-heading);
-  font-size: 0.82rem;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-seller-qty {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--admin-text-heading);
-  white-space: nowrap;
-}
-
-.item-seller-caret {
-  font-size: 0.7rem;
-  color: var(--admin-text-muted);
-  transition: transform 0.15s ease;
-}
-
-.item-seller-item.is-open .item-seller-caret {
-  transform: rotate(180deg);
-}
-
-.item-seller-detail {
-  display: none;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 0.65rem;
-  align-items: center;
-  padding: 0 0.15rem 0.55rem 1.85rem;
-}
-
-.item-seller-item.is-open .item-seller-detail {
-  display: grid;
-}
-
 .item-seller-photo {
   width: 36px;
   height: 36px;
@@ -3707,31 +3525,32 @@ a.dash-card-link .stat-card {
   color: var(--admin-text-muted);
 }
 
-.item-seller-detail-line {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.74rem;
-  line-height: 1.35;
-}
-
-.item-seller-detail-line span {
-  color: var(--admin-text-muted);
-}
-
-.item-seller-detail-line strong {
+.item-seller-modal-name {
   font-weight: 700;
+  font-size: 0.86rem;
   color: var(--admin-text-heading);
 }
 
-@media (max-width: 991.98px) {
-  .item-insights {
-    grid-template-columns: 1fr;
-  }
+.item-seller-modal-sub {
+  font-size: 0.74rem;
+  color: var(--admin-text-muted);
+  margin-top: 0.1rem;
 }
 
-[data-bs-theme="dark"] .item-insight-sellers {
-  background: var(--admin-surface);
+.item-seller-modal-stats {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.item-seller-modal-stats strong {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.item-seller-modal-stats span {
+  font-size: 0.74rem;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 [data-bs-theme="dark"] .item-seller-rank--2 {
