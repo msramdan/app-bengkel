@@ -244,4 +244,36 @@ class PurchaseManagementTest extends TestCase
             'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
         ])->assertUnauthorized();
     }
+
+    #[Test]
+    public function purchase_history_filters_by_period_and_exports_pdf(): void
+    {
+        $inRange = $this->createPurchase(2);
+        $outOfRange = $this->createPurchase(2);
+        $outOfRange->forceFill(['created_at' => now()->subMonths(2)])->save();
+
+        $from = now()->startOfMonth()->toDateString();
+        $to = now()->toDateString();
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('purchases.index', compact('from', 'to')))
+            ->assertOk()
+            ->assertSee('Filter Periode')
+            ->assertSee('Export PDF');
+
+        $rows = $this->actingAs($this->superAdmin)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('purchases.index', compact('from', 'to')))
+            ->assertOk()
+            ->json('data');
+
+        $numbers = collect($rows)->pluck('purchase_no');
+        $this->assertTrue($numbers->contains($inRange->purchase_no));
+        $this->assertFalse($numbers->contains($outOfRange->purchase_no));
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('purchases.export-pdf', compact('from', 'to')))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
 }

@@ -69,6 +69,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('transactions/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('transactions.invoice');
     Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
 
+    Route::get('purchases/export-pdf', [PurchaseController::class, 'exportPdf'])->name('purchases.export-pdf');
     Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
 
     Route::get('financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');

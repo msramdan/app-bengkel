@@ -20,16 +20,18 @@ class PurchaseController extends Controller
 
     public function __construct(private PurchaseService $purchaseService)
     {
-        $this->middleware('permission:purchase view')->only(['index', 'create', 'show', 'edit']);
+        $this->middleware('permission:purchase view')->only(['index', 'create', 'show', 'edit', 'exportPdf']);
         $this->middleware('permission:purchase create')->only('store');
         $this->middleware('permission:purchase edit')->only('update');
         $this->middleware('permission:purchase delete')->only('destroy');
     }
 
-    public function index(): View|JsonResponse
+    public function index(Request $request): View|JsonResponse
     {
-        if (request()->ajax()) {
-            return DataTables::of(Purchase::query()->with(['user:id,name', 'bankAccount', 'supplier:id,code,name'])->latest())
+        [$from, $to] = $this->resolvePeriod($request);
+
+        if ($request->ajax()) {
+            return DataTables::of($this->periodQuery($from, $to)->latest())
                 ->addIndexColumn()
                 ->addColumn('status_label', fn (Purchase $p) => match ($p->status) {
                     'cancelled' => '<span class="badge bg-danger-subtle text-danger">Batal</span>',
@@ -45,7 +47,43 @@ class PurchaseController extends Controller
                 ->toJson();
         }
 
-        return view('purchases.index');
+        $periodQuery = $this->periodQuery($from, $to);
+
+        return view('purchases.index', [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'periodStats' => [
+                'count' => (clone $periodQuery)->count(),
+                'completed_total' => (float) (clone $periodQuery)->where('status', 'completed')->sum('total'),
+            ],
+        ]);
+    }
+
+    public function exportPdf(Request $request): \Illuminate\Http\Response
+    {
+        [$from, $to] = $this->resolvePeriod($request);
+
+        $purchases = $this->periodQuery($from, $to)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $completed = $purchases->where('status', 'completed');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('purchases.pdf', [
+            'purchases' => $purchases,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'summary' => [
+                'count' => $purchases->count(),
+                'completed_count' => $completed->count(),
+                'total' => (float) $completed->sum('total'),
+            ],
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'riwayat-pembelian-'.$from->format('Ymd').'-'.$to->format('Ymd').'.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function create(): View
@@ -200,5 +238,32 @@ class PurchaseController extends Controller
         }
 
         return '<span class="badge bg-secondary-subtle text-secondary">'.e($label).'</span>';
+    }
+
+    /**
+     * @return array{0: \Carbon\Carbon, 1: \Carbon\Carbon}
+     */
+    private function resolvePeriod(Request $request): array
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $from = \Carbon\Carbon::parse($validated['from'] ?? now()->startOfMonth()->toDateString());
+        $to = \Carbon\Carbon::parse($validated['to'] ?? now()->toDateString());
+
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [$from, $to];
+    }
+
+    private function periodQuery(\Carbon\Carbon $from, \Carbon\Carbon $to): \Illuminate\Database\Eloquent\Builder
+    {
+        return Purchase::query()
+            ->with(['user:id,name', 'bankAccount', 'supplier:id,code,name'])
+            ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()]);
     }
 }
