@@ -75,6 +75,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
     Route::get('financial-reports/export-pdf', [FinancialReportController::class, 'exportPdf'])->name('financial-reports.export-pdf');
     Route::get('financial-reports/technicians/{technician}/commissions', [FinancialReportController::class, 'technicianCommissions'])->name('financial-reports.technician-commissions');
+    Route::get('financial-reports/technicians/{technician}/commissions/pdf', [FinancialReportController::class, 'exportTechnicianCommissionsPdf'])->name('financial-reports.technician-commissions-pdf');
 
     Route::get('manual-incomes', [ManualIncomeController::class, 'index'])->name('manual-incomes.index');
     Route::post('manual-incomes', [ManualIncomeController::class, 'store'])->name('manual-incomes.store');

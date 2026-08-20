@@ -15,7 +15,12 @@ class FinancialReportController extends Controller
 {
     public function __construct(private FinancialReportService $reportService)
     {
-        $this->middleware('permission:financial report view')->only(['index', 'exportPdf', 'technicianCommissions']);
+        $this->middleware('permission:financial report view')->only([
+            'index',
+            'exportPdf',
+            'technicianCommissions',
+            'exportTechnicianCommissionsPdf',
+        ]);
     }
 
     public function index(Request $request): View
@@ -37,6 +42,23 @@ class FinancialReportController extends Controller
         return response()->json([
             'data' => $this->reportService->technicianCommissionDetails($technician->id, $from, $to),
         ]);
+    }
+
+    public function exportTechnicianCommissionsPdf(Request $request, Technician $technician): Response
+    {
+        [$from, $to] = $this->resolvePeriod($request);
+        $detail = $this->reportService->technicianCommissionDetails($technician->id, $from, $to);
+
+        $pdf = Pdf::loadView('financial-reports.technician-commissions-pdf', [
+            'detail' => $detail,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+        ])->setPaper('a4', 'portrait');
+
+        $slug = str($detail['technician_name'])->slug('-')->toString() ?: 'teknisi';
+        $filename = 'rincian-komisi-'.$slug.'-'.$from->format('Ymd').'-'.$to->format('Ymd').'.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function exportPdf(Request $request): Response

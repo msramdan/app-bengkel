@@ -80,9 +80,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer justify-content-between">
+                <div class="modal-footer justify-content-between flex-wrap gap-2">
                     <div class="small text-muted" id="commission-detail-count"></div>
-                    <div class="fw-semibold text-info" id="commission-detail-total"></div>
+                    <div class="d-flex align-items-center flex-wrap gap-2 ms-auto">
+                        <div class="fw-semibold text-info" id="commission-detail-total"></div>
+                        <a href="#" id="commission-detail-print" class="btn btn-outline-secondary btn-sm d-none" target="_blank">
+                            <i class="bi bi-printer me-1"></i> Cetak
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -97,6 +102,7 @@
     <script>
         (function ($) {
             const urlTemplate = @json(route('financial-reports.technician-commissions', ['technician' => '__ID__']));
+            const printUrlTemplate = @json(route('financial-reports.technician-commissions-pdf', ['technician' => '__ID__']));
             const from = @json($from);
             const to = @json($to);
 
@@ -108,6 +114,12 @@
                 return $('<div>').text(value == null ? '' : String(value)).html();
             }
 
+            function buildPrintUrl(technicianId) {
+                return printUrlTemplate.replace('__ID__', technicianId)
+                    + '?from=' + encodeURIComponent(from)
+                    + '&to=' + encodeURIComponent(to);
+            }
+
             $('.fr-commission-link').on('click', function () {
                 const technicianId = $(this).data('technician-id');
                 const technicianName = $(this).data('technician-name');
@@ -116,11 +128,13 @@
                 const $error = $('#commission-detail-error');
                 const $content = $('#commission-detail-content');
                 const $body = $('#commission-detail-body');
+                const $print = $('#commission-detail-print');
 
                 $('#commission-detail-title').text('Rincian Komisi — ' + technicianName);
                 $('#commission-detail-period').text('Periode ' + from.split('-').reverse().join('/') + ' – ' + to.split('-').reverse().join('/'));
                 $('#commission-detail-count').text('');
                 $('#commission-detail-total').text('');
+                $print.addClass('d-none').attr('href', '#');
                 $loading.removeClass('d-none');
                 $error.addClass('d-none').text('');
                 $content.addClass('d-none');
@@ -152,6 +166,7 @@
 
                         $('#commission-detail-count').text((data.transaction_count || 0) + ' transaksi');
                         $('#commission-detail-total').text('Total komisi ' + formatRp(data.commission_total));
+                        $print.attr('href', buildPrintUrl(technicianId)).removeClass('d-none');
                         $loading.addClass('d-none');
                         $content.removeClass('d-none');
                     })

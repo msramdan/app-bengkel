@@ -158,6 +158,32 @@ class PurchaseAndFinancialReportTest extends TestCase
     }
 
     #[Test]
+    public function admin_can_print_technician_commission_pdf(): void
+    {
+        $service = WorkshopService::create([
+            'code' => 'JSV-FIN-03',
+            'name' => 'Servis Rem',
+            'price' => 50000,
+            'is_active' => true,
+        ]);
+
+        app(TransactionService::class)->create([
+            'customer_id' => $this->customer->id,
+            'technician_id' => $this->technician->id,
+            'services' => [['workshop_service_id' => $service->id, 'quantity' => 1]],
+        ], $this->user->id);
+
+        $this->actingAs($this->user)
+            ->get(route('financial-reports.technician-commissions-pdf', [
+                'technician' => $this->technician->id,
+                'from' => now()->toDateString(),
+                'to' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    #[Test]
     public function teknisi_cannot_view_commission_transaction_list(): void
     {
         $teknisi = User::factory()->create();
